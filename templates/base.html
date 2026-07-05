@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="سامانه هوشمند گزارش و مدیریت خرابی‌های دانشگاه">
+    <title>{% block title %}سامانه خرابی دانشگاه{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% block navbar %}
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">سامانه خرابی دانشگاه</a>
+            <div class="navbar-menu">
+                {% if user.is_authenticated %}
+                    <span class="navbar-user">{{ user.full_name }}</span>
+                    <a href="{% url 'accounts:logout' %}" class="btn btn-outline">خروج</a>
+                {% else %}
+                    <a href="{% url 'accounts:login' %}" class="btn btn-primary">ورود</a>
+                    <a href="{% url 'accounts:register' %}" class="btn btn-outline">ثبت‌نام</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+            <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>سامانه هوشمند گزارش و مدیریت خرابی‌ها &mdash; دانشگاه ارومیه &mdash; ۱۴۰۴-۱۴۰۵</p>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
