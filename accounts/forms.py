@@ -191,3 +191,82 @@ class LoginForm(forms.Form):
             'class': 'form-checkbox',
         })
     )
+
+
+class PasswordResetRequestForm(forms.Form):
+    """
+    Form to request password reset.
+    US-03: ورود ایمیل یا شماره شناسایی برای بازیابی رمز
+    """
+
+    identifier = forms.CharField(
+        label='ایمیل یا شماره شناسایی',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'ایمیل یا شماره دانشجویی/کارمندی/استادی',
+            'autofocus': True,
+        })
+    )
+
+
+class PasswordResetCodeForm(forms.Form):
+    """
+    Form for entering 6-digit reset code.
+    US-03: وارد کردن کد ۶ رقمی ارسال شده به ایمیل
+    """
+
+    code = forms.CharField(
+        label='کد تایید',
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input verification-code',
+            'placeholder': '------',
+            'maxlength': '6',
+            'autocomplete': 'off',
+            'inputmode': 'numeric',
+            'style': 'text-align: center; font-size: 24px; letter-spacing: 12px;',
+        })
+    )
+
+    def clean_code(self):
+        code = self.cleaned_data.get('code')
+        if not code.isdigit():
+            raise ValidationError('کد تایید باید فقط عدد باشد.')
+        return code
+
+
+class PasswordResetNewForm(forms.Form):
+    """
+    Form for setting new password.
+    US-03: رمز جدید + تکرار + چک قوی بودن Real-time
+    """
+
+    new_password = forms.CharField(
+        label='رمز عبور جدید',
+        min_length=8,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'حداقل ۸ کاراکتر',
+            'id': 'new-password',
+        })
+    )
+
+    confirm_password = forms.CharField(
+        label='تکرار رمز عبور جدید',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'رمز عبور جدید را تکرار کنید',
+            'id': 'confirm-password',
+        })
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_pass = cleaned_data.get('new_password')
+        confirm = cleaned_data.get('confirm_password')
+
+        if new_pass and confirm and new_pass != confirm:
+            self.add_error('confirm_password', 'رمز عبور و تکرار آن مطابقت ندارند.')
+
+        return cleaned_data

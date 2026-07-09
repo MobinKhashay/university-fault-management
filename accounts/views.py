@@ -11,8 +11,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
-from .forms import RegistrationForm, EmailVerificationForm, LoginForm
-from .models import User, EmailVerification
+from .forms import (
+    RegistrationForm, EmailVerificationForm, LoginForm,
+    PasswordResetRequestForm, PasswordResetCodeForm, PasswordResetNewForm,
+)
+from .models import User, EmailVerification, PasswordResetToken
 
 
 # ============================================================
@@ -368,6 +371,248 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'با موفقیت خارج شدید.')
     return redirect('accounts:login')
+
+
+# ============================================================
+# Password Reset Views (US-03)
+# ============================================================
+
+def generate_secure_token():
+    """Generate a secure random token for password reset."""
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=64))
+
+
+def send_reset_email(user, code):
+    """Send password reset code via email."""
+    subject = 'بازیابی رمز عبور - سامانه خرابی دانشگاه'
+    message = (
+        f'سلام {user.first_name} عزیز،\n\n'
+        f'کد بازیابی رمز عبور شما: {code}\n\n'
+        f'این کد تا {settings.PASSWORD_RESET_CODE_EXPIRY // 60} دقیقه اعتبار دارد.\n'
+        f'اگر شما این درخواست را نداده‌اید، این پیام را نادیده بگیرید.\n\n'
+        f'سامانه گزارش و مدیریت خرابی‌های دانشگاه'
+    )
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Reset email failed: {e}")
+        return False
+
+
+def password_reset_request_view(request):
+    """
+    Step 1: User enters email or student_id to request reset.
+    US-03: درخواست بازیابی رمز عبور
+    """
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+
+    if request.method == 'POST':
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            identifier = form.cleaned_data['identifier']
+
+            # Find user by email or student_id
+            user = User.objects.filter(email=identifier).first()
+            if not user:
+                user = User.objects.filter(student_id=identifier).first()
+
+            if not user:
+                messages.error(request, 'کاربری با این مشخصات یافت نشد.')
+                return render(request, 'accounts/password_reset_request.html', {'form': form})
+
+            # Rate limiting: max 3 per hour
+            recent_tokens = PasswordResetToken.objects.filter(
+                user=user,
+                created_at__gte=timezone.now() - timezone.timedelta(hours=1),
+            ).count()
+
+            if recent_tokens >= settings.MAX_PASSWORD_RESET_PER_HOUR:
+                messages.error(request, 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً ۱ ساعت بعد تلاش کنید.')
+                return render(request, 'accounts/password_reset_request.html', {'form': form})
+
+            # Generate code and token
+            code = generate_verification_code()
+            token = generate_secure_token()
+
+            PasswordResetToken.objects.create(
+                user=user, token=token, code=code,
+            )
+
+            # Send email
+            email_sent = send_reset_email(user, code)
+
+            if email_sent:
+                messages.success(request, 'کد بازیابی به ایمیل شما ارسال شد.')
+            else:
+                messages.warning(request, f'ارسال ایمیل با مشکل مواجه شد. کد بازیابی شما: {code}')
+
+            # Store token in session
+            request.session['reset_token'] = token
+            request.session['reset_user_id'] = user.id
+
+            return redirect('accounts:password_reset_verify')
+    else:
+        form = PasswordResetRequestForm()
+
+    return render(request, 'accounts/password_reset_request.html', {'form': form})
+
+
+def password_reset_verify_view(request):
+    """
+    Step 2: User enters 6-digit code.
+    US-03: وارد کردن کد ۶ رقمی (اعتبار ۵ دقیقه)
+    """
+    token = request.session.get('reset_token')
+    user_id = request.session.get('reset_user_id')
+
+    if not token or not user_id:
+        messages.error(request, 'لطفاً ابتدا درخواست بازیابی رمز دهید.')
+        return redirect('accounts:password_reset')
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('accounts:password_reset')
+
+    if request.method == 'POST':
+        form = PasswordResetCodeForm(request.POST)
+        if form.is_valid():
+            code = form.cleaned_data['code']
+
+            reset_token = PasswordResetToken.objects.filter(
+                user=user, token=token, is_used=False,
+            ).first()
+
+            if not reset_token:
+                messages.error(request, 'توکن نامعتبر است. لطفاً دوباره درخواست دهید.')
+                return redirect('accounts:password_reset')
+
+            # Check code
+            if reset_token.code != code:
+                reset_token.attempts += 1
+                reset_token.save()
+                if reset_token.attempts >= 3:
+                    reset_token.is_used = True
+                    reset_token.save()
+                    messages.error(request, 'تعداد تلاش‌های شما به حد مجاز رسید. لطفاً دوباره درخواست دهید.')
+                    return redirect('accounts:password_reset')
+                remaining = 3 - reset_token.attempts
+                messages.error(request, f'کد نادرست است. {remaining} تلاش باقیمانده.')
+                return render(request, 'accounts/password_reset_verify.html', {
+                    'form': form, 'email': user.email,
+                })
+
+            # Check expiry (5 minutes)
+            elapsed = (timezone.now() - reset_token.created_at).total_seconds()
+            if elapsed > settings.PASSWORD_RESET_CODE_EXPIRY:
+                messages.error(request, 'کد منقضی شده است. لطفاً کد جدید درخواست کنید.')
+                return render(request, 'accounts/password_reset_verify.html', {
+                    'form': form, 'email': user.email,
+                })
+
+            # Code is valid — proceed to new password
+            request.session['reset_verified'] = True
+            return redirect('accounts:password_reset_new')
+    else:
+        form = PasswordResetCodeForm()
+
+    return render(request, 'accounts/password_reset_verify.html', {
+        'form': form, 'email': user.email,
+    })
+
+
+def password_reset_resend_view(request):
+    """Resend password reset code with rate limiting."""
+    user_id = request.session.get('reset_user_id')
+    if not user_id:
+        return redirect('accounts:password_reset')
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('accounts:password_reset')
+
+    # Rate limiting
+    recent_tokens = PasswordResetToken.objects.filter(
+        user=user,
+        created_at__gte=timezone.now() - timezone.timedelta(hours=1),
+    ).count()
+
+    if recent_tokens >= settings.MAX_PASSWORD_RESET_PER_HOUR:
+        messages.error(request, 'تعداد درخواست‌ها بیش از حد مجاز است.')
+        return redirect('accounts:password_reset_verify')
+
+    # Generate new code and token
+    code = generate_verification_code()
+    token = generate_secure_token()
+
+    PasswordResetToken.objects.create(user=user, token=token, code=code)
+    request.session['reset_token'] = token
+
+    email_sent = send_reset_email(user, code)
+    if email_sent:
+        messages.success(request, 'کد جدید به ایمیل شما ارسال شد.')
+    else:
+        messages.warning(request, f'ارسال ایمیل با مشکل مواجه شد. کد شما: {code}')
+
+    return redirect('accounts:password_reset_verify')
+
+
+def password_reset_new_view(request):
+    """
+    Step 3: User sets new password.
+    US-03: رمز جدید باید قوی باشد و با رمز قدیمی تفاوت داشته باشد
+    """
+    token = request.session.get('reset_token')
+    user_id = request.session.get('reset_user_id')
+    verified = request.session.get('reset_verified')
+
+    if not token or not user_id or not verified:
+        messages.error(request, 'لطفاً مراحل بازیابی را از ابتدا انجام دهید.')
+        return redirect('accounts:password_reset')
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('accounts:password_reset')
+
+    if request.method == 'POST':
+        form = PasswordResetNewForm(request.POST)
+        if form.is_valid():
+            new_password = form.cleaned_data['new_password']
+
+            # Check new password is different from old
+            if user.check_password(new_password):
+                messages.error(request, 'رمز عبور جدید باید با رمز قبلی تفاوت داشته باشد.')
+                return render(request, 'accounts/password_reset_new.html', {'form': form})
+
+            # Set new password
+            user.set_password(new_password)
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            user.save()
+
+            # Mark token as used
+            PasswordResetToken.objects.filter(token=token).update(is_used=True)
+
+            # Clear session
+            for key in ['reset_token', 'reset_user_id', 'reset_verified']:
+                request.session.pop(key, None)
+
+            messages.success(request, 'رمز عبور با موفقیت تغییر یافت. اکنون می‌توانید وارد شوید.')
+            return redirect('accounts:login')
+    else:
+        form = PasswordResetNewForm()
+
+    return render(request, 'accounts/password_reset_new.html', {'form': form})
 
 
 def dashboard_redirect_view(request):
