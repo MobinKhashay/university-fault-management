@@ -159,3 +159,35 @@ class EmailVerificationForm(forms.Form):
         if not code.isdigit():
             raise ValidationError('کد تایید باید فقط عدد باشد.')
         return code
+
+
+class LoginForm(forms.Form):
+    """
+    Login form with student_id and password.
+    US-02: ورود با شماره شناسایی و رمز عبور + Remember Me
+    """
+
+    student_id = forms.CharField(
+        label='شماره شناسایی',
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'شماره دانشجویی / کارمندی / استادی',
+            'autofocus': True,
+        })
+    )
+
+    password = forms.CharField(
+        label='رمز عبور',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'رمز عبور',
+        })
+    )
+
+    remember_me = forms.BooleanField(
+        label='مرا به خاطر بسپار',
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-checkbox',
+        })
+    )
