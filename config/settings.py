@@ -92,6 +92,13 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'accounts.User'
 
 
+# Custom Authentication Backend
+
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.StudentIDBackend',
+]
+
+
 # Internationalization
 
 LANGUAGE_CODE = 'fa-ir'
