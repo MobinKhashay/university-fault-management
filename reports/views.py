@@ -83,9 +83,15 @@ def submit_report_view(request):
                 description=f'گزارش توسط {request.user.full_name} ثبت شد.',
             )
 
-            # TODO: Auto-assign technician (US-22 - will be implemented later)
+            # Auto-assign technician (US-22)
+            from .assignment_engine import AssignmentEngine
+            engine = AssignmentEngine(report)
+            success, assign_message = engine.assign()
 
-            messages.success(request, f'گزارش شما با شماره #{report.id} ثبت شد.')
+            if success:
+                messages.success(request, f'گزارش شما با شماره #{report.id} ثبت شد و به تکنسین ارجاع داده شد.')
+            else:
+                messages.success(request, f'گزارش شما با شماره #{report.id} ثبت شد. در صف انتظار برای ارجاع قرار گرفت.')
             return redirect('reports:my_reports')
     else:
         form = ReportForm()
