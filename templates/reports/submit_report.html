@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ثبت گزارش خرابی - سامانه خرابی دانشگاه{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>ثبت گزارش خرابی جدید</h1>
+    <p>لطفاً اطلاعات خرابی را با دقت وارد کنید</p>
+</div>
+
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+        <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Duplicate Warning (hidden by default) -->
+<div class="duplicate-warning" id="duplicate-warning" style="display:none;">
+    <h3>⚠️ گزارش مشابه یافت شد!</h3>
+    <p>گزارش‌های زیر در همین مکان و دسته‌بندی ثبت شده‌اند:</p>
+    <ul id="duplicate-list"></ul>
+    <p>آیا می‌خواهید باز هم گزارش جدید ثبت کنید؟</p>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="report-form" id="report-form">
+    {% csrf_token %}
+
+    <!-- === Section 1: Location === -->
+    <div class="form-section">
+        <h2 class="section-title">📍 مکان خرابی</h2>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="faculty-select">دانشکده / مجموعه <span class="required">*</span></label>
+                <select id="faculty-select" class="form-input" required>
+                    <option value="">انتخاب کنید</option>
+                    {% for faculty in faculties %}
+                    <option value="{{ faculty.id }}">{{ faculty.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="building-select">ساختمان <span class="required">*</span></label>
+                <select id="building-select" class="form-input" disabled>
+                    <option value="">ابتدا دانشکده را انتخاب کنید</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row" id="floor-room-row" style="display:none;">
+            <div class="form-group">
+                <label for="location-select">طبقه و اتاق <span class="required">*</span></label>
+                <select id="location-select" class="form-input">
+                    <option value="">ابتدا ساختمان را انتخاب کنید</option>
+                </select>
+            </div>
+        </div>
+
+        {{ form.location }}
+    </div>
+
+    <!-- === Section 2: Category === -->
+    <div class="form-section">
+        <h2 class="section-title">🔧 نوع خرابی</h2>
+
+        <div class="form-group">
+            <label for="category-select">دسته‌بندی <span class="required">*</span></label>
+            {{ form.category }}
+            {% if form.category.errors %}
+            <span class="form-error">{{ form.category.errors.0 }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="priority-select">سطح فوریت <span class="required">*</span></label>
+            {{ form.priority }}
+            <small class="form-hint" id="priority-hint">سیستم سطح فوریت را پیشنهاد می‌دهد</small>
+        </div>
+    </div>
+
+    <!-- === Section 3: Description === -->
+    <div class="form-section">
+        <h2 class="section-title">📝 توضیحات</h2>
+
+        <div class="form-group">
+            <label for="id_title">عنوان خرابی <span class="required">*</span></label>
+            {{ form.title }}
+            {% if form.title.errors %}
+            <span class="form-error">{{ form.title.errors.0 }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="description-input">توضیحات <span class="required">*</span></label>
+            {{ form.description }}
+            <div class="char-counter">
+                <span id="char-count">0</span> / حداقل ۲۰ کاراکتر
+            </div>
+            {% if form.description.errors %}
+            <span class="form-error">{{ form.description.errors.0 }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- === Section 4: Media Upload === -->
+    <div class="form-section">
+        <h2 class="section-title">📷 تصاویر و فایل‌ها</h2>
+
+        <div class="form-group">
+            <label>تصاویر (حداکثر ۳ عکس)</label>
+            <input type="file" name="images" id="images-input" class="form-input"
+                   accept="image/*" multiple>
+            <small class="form-hint">فرمت‌های مجاز: JPG, PNG, WEBP</small>
+            <div class="image-preview" id="image-preview"></div>
+        </div>
+
+        <div class="form-group">
+            <label>ویدیو (اختیاری — حداکثر ۱۰ مگابایت)</label>
+            <input type="file" name="video" id="video-input" class="form-input"
+                   accept="video/*">
+            <small class="form-hint">فرمت‌های مجاز: MP4, WEBM</small>
+        </div>
+
+        <div class="form-group">
+            <label>فایل صوتی (اختیاری — حداکثر ۱۰ ثانیه)</label>
+            <input type="file" name="audio" id="audio-input" class="form-input"
+                   accept="audio/*">
+        </div>
+    </div>
+
+    <!-- === Submit === -->
+    <div class="form-actions">
+        <button type="button" class="btn btn-outline-secondary" id="preview-btn">پیش‌نمایش</button>
+        <button type="submit" class="btn btn-primary btn-lg">ثبت گزارش</button>
+    </div>
+</form>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="preview-modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>پیش‌نمایش گزارش</h2>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="preview-body"></div>
+        <div class="modal-footer">
+            <button class="btn btn-outline-secondary" id="modal-cancel">بازگشت و ویرایش</button>
+            <button class="btn btn-primary" id="modal-submit">تایید و ارسال</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/submit_report.js' %}"></script>
+{% endblock %}
