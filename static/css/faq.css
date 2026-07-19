@@ -1,0 +1,14 @@
+.faq-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.faq-tab { padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; color: var(--secondary); border: 1px solid var(--border); }
+.faq-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+.faq-list { display: flex; flex-direction: column; gap: 8px; }
+.faq-item { background: var(--white); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
+.faq-question { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 15px; }
+.faq-question:hover { background: var(--light); }
+.faq-toggle { transition: transform 0.3s; }
+.faq-item.open .faq-toggle { transform: rotate(180deg); }
+.faq-answer { display: none; padding: 0 20px 16px; font-size: 14px; line-height: 1.8; color: var(--secondary); }
+.faq-item.open .faq-answer { display: block; }
+.faq-votes { margin-top: 12px; display: flex; gap: 12px; }
+.vote-btn { background: none; border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; }
+.vote-btn:hover { background: var(--light); }
