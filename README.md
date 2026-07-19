@@ -56,10 +56,11 @@ python manage.py runserver
 
 ## Team
 
-- **Product Owner:** [Name]
-- **Scrum Master:** [Name]
-- **Backend Developer:** [Name]
-- **Frontend Developer:** [Name]
+- **Product Owner:** [Ali Rashidi]
+- **Scrum Master:** [Mohammad Onagh]
+- **Backend Developer:** [Mobin Khashay]
+- **Frontend Developer:** [Parisa Behruzfar]
+- **Frontend Developer:** [Ali Nouri]
 
 ## License
 

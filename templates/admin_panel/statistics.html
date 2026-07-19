@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}آمار و گزارش‌گیری - پنل مدیر{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 آمار و گزارش‌گیری</h1>
+    <div class="export-buttons">
+        <a href="{% url 'admin_panel:export_excel' %}" class="btn btn-outline-secondary">📥 خروجی Excel</a>
+        <a href="{% url 'admin_panel:export_pdf' %}" class="btn btn-outline-secondary">📥 خروجی PDF</a>
+    </div>
+</div>
+
+<!-- Time Filter -->
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <select name="period" class="form-input filter-select" onchange="this.form.submit()">
+            <option value="week" {% if period == 'week' %}selected{% endif %}>این هفته</option>
+            <option value="month" {% if period == 'month' %}selected{% endif %}>این ماه</option>
+            <option value="quarter" {% if period == 'quarter' %}selected{% endif %}>سه ماه اخیر</option>
+            <option value="year" {% if period == 'year' %}selected{% endif %}>امسال</option>
+        </select>
+    </form>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card kpi-blue"><div class="kpi-value">{{ total_reports }}</div><div class="kpi-label">کل گزارش‌ها</div></div>
+    <div class="kpi-card kpi-green"><div class="kpi-value">{{ resolved_reports }}</div><div class="kpi-label">حل شده</div></div>
+    <div class="kpi-card kpi-orange"><div class="kpi-value">{{ pending_reports }}</div><div class="kpi-label">در انتظار</div></div>
+    <div class="kpi-card kpi-purple"><div class="kpi-value">{{ resolution_rate }}%</div><div class="kpi-label">نرخ حل</div></div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+    <div class="chart-card">
+        <h3>توزیع بر اساس دسته‌بندی</h3>
+        <canvas id="categoryChart" height="250"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>توزیع بر اساس دانشکده</h3>
+        <canvas id="facultyChart" height="250"></canvas>
+    </div>
+</div>
+
+<div class="charts-row">
+    <div class="chart-card">
+        <h3>توزیع بر اساس اولویت</h3>
+        <canvas id="priorityChart" height="250"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>میانگین رضایت: {{ avg_rating }} ⭐</h3>
+        <div style="text-align:center;padding:60px;font-size:64px;">{{ avg_rating }} ⭐</div>
+    </div>
+</div>
+
+<!-- Technician Ranking -->
+<div class="section-card">
+    <h3>🏆 رتبه‌بندی تکنسین‌ها</h3>
+    <table class="data-table">
+        <thead><tr><th>رتبه</th><th>نام</th><th>تخصص</th><th>تکمیل شده</th><th>میانگین امتیاز</th></tr></thead>
+        <tbody>
+            {% for tech in tech_ranking %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ tech.name }}</td>
+                <td>{{ tech.specialty }}</td>
+                <td>{{ tech.completed }}</td>
+                <td>{{ tech.rating }} ⭐</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-state">داده‌ای یافت نشد</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Critical Points -->
+<div class="section-card">
+    <h3>🔴 نقاط بحرانی (بیشترین خرابی)</h3>
+    <table class="data-table">
+        <thead><tr><th>رتبه</th><th>دانشکده</th><th>ساختمان</th><th>تعداد گزارش</th></tr></thead>
+        <tbody>
+            {% for point in critical_points %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ point.location__building__faculty__name|default:"—" }}</td>
+                <td>{{ point.location__building__name|default:"—" }}</td>
+                <td>{{ point.count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="empty-state">داده‌ای یافت نشد</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('categoryChart').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels: {{ cat_labels|safe }}, datasets: [{ data: {{ cat_counts|safe }}, backgroundColor: ['#2E75B6','#FF9800','#28A745','#DC3545','#9370DB','#17A2B8','#FFC107'] }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+new Chart(document.getElementById('facultyChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: {{ fac_labels|safe }}, datasets: [{ label: 'تعداد', data: {{ fac_counts|safe }}, backgroundColor: '#2E75B6', borderRadius: 6 }] },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+});
+new Chart(document.getElementById('priorityChart').getContext('2d'), {
+    type: 'pie',
+    data: { labels: {{ pri_labels|safe }}, datasets: [{ data: {{ pri_counts|safe }}, backgroundColor: ['#6C757D','#FFC107','#DC3545'] }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+{% endblock %}
