@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}سوالات متداول{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/faq.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header"><h1>❓ سوالات متداول</h1></div>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <input type="text" name="q" value="{{ search }}" class="form-input search-input" placeholder="جستجوی زنده...">
+        <div class="faq-tabs">
+            <a href="?" class="faq-tab {% if not current_category %}active{% endif %}">همه</a>
+            {% for val, label in categories %}<a href="?category={{ val }}" class="faq-tab {% if current_category == val %}active{% endif %}">{{ label }}</a>{% endfor %}
+        </div>
+    </form>
+</div>
+<div class="faq-list">
+    {% for faq in faqs %}
+    <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>{{ faq.question }}</span><span class="faq-toggle">▼</span>
+        </div>
+        <div class="faq-answer">
+            <p>{{ faq.answer }}</p>
+            <div class="faq-votes">
+                <form method="post" action="{% url 'faq:vote' faq.id %}" style="display:inline;">{% csrf_token %}<button name="vote" value="like" class="vote-btn">👍 {{ faq.likes }}</button></form>
+                <form method="post" action="{% url 'faq:vote' faq.id %}" style="display:inline;">{% csrf_token %}<button name="vote" value="dislike" class="vote-btn">👎 {{ faq.dislikes }}</button></form>
+            </div>
+        </div>
+    </div>
+    {% empty %}<div class="empty-state">سوالی یافت نشد</div>{% endfor %}
+</div>
+{% endblock %}
