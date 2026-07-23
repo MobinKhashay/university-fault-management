@@ -1,12 +1,7 @@
-"""
-University structure management views.
-US-21: مدیریت ساختار دانشگاه (لوکیشن‌ها و دسته‌بندی‌ها)
-"""
+"""University structure management. US-21"""
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
 from reports.models import Faculty, Building, Location, FaultCategory, Specialty
 
 
@@ -22,15 +17,11 @@ def admin_required(view_func):
 
 @admin_required
 def structure_settings_view(request):
-    """Main structure settings page."""
     faculties = Faculty.objects.all().prefetch_related('buildings__locations')
     specialties = Specialty.objects.all().prefetch_related('categories')
-    categories = FaultCategory.objects.all().select_related('specialty')
-
     return render(request, 'admin_panel/structure_settings.html', {
         'faculties': faculties,
         'specialties': specialties,
-        'categories': categories,
     })
 
 
@@ -62,11 +53,10 @@ def add_location_view(request):
         building_id = request.POST.get('building_id')
         floor = request.POST.get('floor', '').strip()
         room = request.POST.get('room', '').strip()
-        loc_type = request.POST.get('location_type', 'faculty')
         if building_id:
             building = get_object_or_404(Building, id=building_id)
-            Location.objects.create(building=building, floor=floor, room=room, location_type=loc_type)
-            messages.success(request, f'مکان جدید اضافه شد.')
+            Location.objects.create(building=building, floor=floor, room=room, location_type='faculty')
+            messages.success(request, f'طبقه {floor} اتاق {room} اضافه شد.')
     return redirect('admin_panel:structure_settings')
 
 
@@ -104,6 +94,22 @@ def delete_faculty_view(request, pk):
 def delete_building_view(request, pk):
     if request.method == 'POST':
         get_object_or_404(Building, id=pk).delete()
+        messages.success(request, 'حذف شد.')
+    return redirect('admin_panel:structure_settings')
+
+
+@admin_required
+def delete_location_view(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(Location, id=pk).delete()
+        messages.success(request, 'حذف شد.')
+    return redirect('admin_panel:structure_settings')
+
+
+@admin_required
+def delete_specialty_view(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(Specialty, id=pk).delete()
         messages.success(request, 'حذف شد.')
     return redirect('admin_panel:structure_settings')
 

@@ -57,6 +57,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField('شماره تلفن', max_length=15, blank=True)
     id_card_image = models.ImageField('تصویر کارت شناسایی', upload_to='id_cards/', blank=True, null=True)
     is_verified = models.BooleanField('تایید شده', default=False)
+    is_id_verified = models.BooleanField(default=False, verbose_name='هویت تایید شده')
     is_active = models.BooleanField('فعال', default=True)
     is_staff = models.BooleanField('دسترسی ادمین', default=False)
     created_at = models.DateTimeField('تاریخ ثبت‌نام', default=timezone.now)

@@ -4,128 +4,201 @@
 {% block title %}تسک #{{ report.id }} - پنل تکنسین{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/technician.css' %}">
+    <link rel="stylesheet" href="{% static 'css/technician.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>تسک #{{ report.id }} — {{ report.title }}</h1>
-    <a href="{% url 'technicians:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
-</div>
+    <div class="page-header">
+        <h1>تسک #{{ report.id }} — {{ report.title }}</h1>
+        <a href="{% url 'technicians:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
+    </div>
 
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>
-    {% endfor %}
-</div>
-{% endif %}
 
-<!-- Report Info (Read-Only) -->
-<div class="detail-card">
-    <h3>📋 اطلاعات گزارش</h3>
-    <div class="detail-row"><span class="detail-label">عنوان:</span><span class="detail-value">{{ report.title }}</span></div>
-    <div class="detail-row"><span class="detail-label">مکان:</span><span class="detail-value">{{ report.location }}</span></div>
-    <div class="detail-row"><span class="detail-label">دسته‌بندی:</span><span class="detail-value">{{ report.category }}</span></div>
-    <div class="detail-row"><span class="detail-label">اولویت:</span><span class="detail-value"><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></span></div>
-    <div class="detail-row"><span class="detail-label">وضعیت:</span><span class="detail-value"><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></span></div>
-    <div class="detail-row"><span class="detail-label">گزارش‌دهنده:</span><span class="detail-value">{{ report.reporter.full_name }}</span></div>
-    <div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">{{ report.description }}</span></div>
-    {% if report.eta_hours %}
-    <div class="detail-row"><span class="detail-label">ETA:</span><span class="detail-value">{{ report.eta_hours }} ساعت</span></div>
+
+    <!-- Report Info (Read-Only) -->
+    <div class="detail-card">
+        <h3>📋 اطلاعات گزارش</h3>
+        <div class="detail-row"><span class="detail-label">عنوان:</span><span class="detail-value">{{ report.title }}</span></div>
+        <div class="detail-row"><span class="detail-label">مکان:</span><span class="detail-value">{{ report.location }}</span></div>
+        <div class="detail-row"><span class="detail-label">دسته‌بندی:</span><span class="detail-value">{{ report.category }}</span></div>
+        <div class="detail-row"><span class="detail-label">اولویت:</span><span class="detail-value"><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></span></div>
+        <div class="detail-row"><span class="detail-label">وضعیت:</span><span class="detail-value"><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></span></div>
+        <div class="detail-row"><span class="detail-label">گزارش‌دهنده:</span><span class="detail-value">{{ report.reporter.full_name }}</span></div>
+        <div class="detail-row"><span class="detail-label">توضیحات:</span><span class="detail-value">{{ report.description }}</span></div>
+        {% if report.eta_hours %}
+            <div class="detail-row"><span class="detail-label">ETA:</span><span class="detail-value">{{ report.eta_hours }} ساعت</span></div>
+        {% endif %}
+    </div>
+
+    <!-- Media -->
+    {% if media %}
+        <div class="detail-card">
+            <h3>📷 تصاویر گزارش‌دهنده</h3>
+            <div class="image-preview">
+                {% for m in media %}
+                    <img src="{{ m.file_path.url }}" alt="report image">
+                {% endfor %}
+            </div>
+        </div>
     {% endif %}
-</div>
 
-<!-- Media -->
-{% if media %}
-<div class="detail-card">
-    <h3>📷 تصاویر گزارش‌دهنده</h3>
-    <div class="image-preview">
-        {% for m in media %}
-        <img src="{{ m.file_path.url }}" alt="report image">
-        {% endfor %}
+    <!-- Dynamic Action Buttons -->
+    <div class="detail-card">
+        <h3>⚡ عملیات</h3>
+        <div class="action-buttons">
+
+            {% if report.status == 'assigned' %}
+                <form method="post" action="{% url 'technicians:start_task' report.id %}" class="inline-form">
+                    {% csrf_token %}
+                    <select name="eta" class="form-input" style="width:auto;display:inline-block;" required>
+                        <option value="">ETA انتخاب کنید</option>
+                        <option value="0.5">۳۰ دقیقه</option>
+                        <option value="1">۱ ساعت</option>
+                        <option value="2">۲ ساعت</option>
+                        <option value="4">۴ ساعت</option>
+                        <option value="8">۸ ساعت</option>
+                        <option value="24">۲۴ ساعت</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">▶ شروع کار</button>
+                </form>
+            {% endif %}
+
+            {% if report.status == 'in_progress' %}
+                <form method="post" action="{% url 'technicians:heading' report.id %}" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">🚶 در حال رفتن به محل</button>
+                </form>
+                <form method="post" action="{% url 'technicians:confirm_arrival' report.id %}" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">📍 تایید حضور در محل</button>
+                </form>
+            {% endif %}
+
+            {% if report.status == 'in_progress' %}
+                <form method="post" action="{% url 'technicians:complete_task' report.id %}" enctype="multipart/form-data" class="full-width-form">
+                    {% csrf_token %}
+                    <h4>✅ اتمام کار:</h4>
+                    <textarea name="description" class="form-input" rows="3" placeholder="توضیح تعمیر انجام شده..." required></textarea>
+                    <input type="file" name="after_photo" class="form-input" accept="image/*">
+                    <small class="form-hint">آپلود عکس بعد از تعمیر (اختیاری)</small>
+                    <button type="submit" class="btn btn-primary" style="background:#28A745;margin-top:8px;">تایید اتمام کار</button>
+                </form>
+            {% endif %}
+
+            {% if report.status == 'in_progress' or report.status == 'assigned' %}
+                <form method="post" action="{% url 'technicians:suspend_task' report.id %}" class="full-width-form" id="suspend-form">
+                    {% csrf_token %}
+                    <h4>⏸️ تعلیق:</h4>
+                    <select name="reason" class="form-input" id="suspend-reason" required onchange="toggleOtherReason()">
+                        <option value="">دلیل تعلیق را انتخاب کنید</option>
+                        <option value="نیاز به قطعه">نیاز به قطعه</option>
+                        <option value="نیازمند پاسخ گزارش‌دهنده">نیازمند پاسخ گزارش‌دهنده</option>
+                        <option value="تداخل با ساعات کلاس">تداخل با ساعات کلاس</option>
+                        <option value="عدم دسترسی به محل">عدم دسترسی به محل</option>
+                        <option value="سایر">سایر</option>
+                    </select>
+                    <textarea name="other_reason" id="other-reason" class="form-input" rows="2" placeholder="توضیح دلیل تعلیق..." style="display:none;margin-top:8px;"></textarea>
+                    <button type="submit" class="btn btn-outline-secondary" style="margin-top:8px;">تعلیق تسک</button>
+                </form>
+                <script>
+                    function toggleOtherReason() {
+                        var select = document.getElementById('suspend-reason');
+                        var textarea = document.getElementById('other-reason');
+                        if (select.value === 'سایر') {
+                            textarea.style.display = 'block';
+                            textarea.required = true;
+                        } else {
+                            textarea.style.display = 'none';
+                            textarea.required = false;
+                            textarea.value = '';
+                        }
+                    }
+                </script>
+
+                <form method="post" action="{% url 'technicians:request_part' report.id %}" class="full-width-form">
+                    {% csrf_token %}
+                    <h4>🔩 درخواست قطعه:</h4>
+                    <input type="text" name="part_name" class="form-input" placeholder="نام قطعه مورد نیاز..." required>
+                    <button type="submit" class="btn btn-outline-secondary" style="margin-top:8px;">ارسال درخواست</button>
+                </form>
+            {% endif %}
+            {% if report.status == 'suspended' %}
+                <form method="post" action="{% url 'technicians:resume_task' report.id %}" class="full-width-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary" style="background:#28A745;">▶ ازسرگیری کار</button>
+                </form>
+
+                <form method="post" action="{% url 'technicians:complete_task' report.id %}" enctype="multipart/form-data" class="full-width-form">
+                    {% csrf_token %}
+                    <h4>✅ اتمام کار:</h4>
+                    <textarea name="description" class="form-input" rows="3" placeholder="توضیح تعمیر..." required></textarea>
+                    <input type="file" name="after_photo" class="form-input" accept="image/*">
+                    <button type="submit" class="btn btn-primary" style="background:#28A745;margin-top:8px;">تایید اتمام کار</button>
+                </form>
+
+                <form method="post" action="{% url 'technicians:request_part' report.id %}" class="full-width-form">
+                    {% csrf_token %}
+                    <h4>🔩 درخواست قطعه:</h4>
+                    <input type="text" name="part_name" class="form-input" placeholder="نام قطعه مورد نیاز..." required>
+                    <button type="submit" class="btn btn-outline-secondary" style="margin-top:8px;">ارسال درخواست</button>
+                </form>
+            {% endif %}
+        </div>
     </div>
-</div>
-{% endif %}
+    <!-- Messages -->
+    <div class="detail-card">
+        <h3>💬 پیام‌رسانی با گزارش‌دهنده</h3>
 
-<!-- Dynamic Action Buttons -->
-<div class="detail-card">
-    <h3>⚡ عملیات</h3>
-    <div class="action-buttons">
+        {% if messages_list %}
+            <div class="messages-list">
+                {% for msg in messages_list %}
+                    <div class="message-item {% if msg.sender == request.user %}message-mine{% else %}message-other{% endif %}">
+                        <div class="message-header">
+                            <strong>{% if msg.sender == request.user %}شما{% else %}{{ msg.sender.full_name }} (گزارش‌دهنده){% endif %}</strong>
+                            <small>{{ msg.created_at|timesince }} پیش</small>
+                        </div>
+                        <p>{{ msg.message }}</p>
+                        {% if msg.attachment %}
+                            <div style="margin-top:8px;">
+                                <a href="{{ msg.attachment.url }}" target="_blank" style="color:var(--primary);">📎 مشاهده پیوست</a>
+                                <br>
+                                <img src="{{ msg.attachment.url }}" alt="پیوست" style="max-width:300px;border-radius:8px;margin-top:4px;" onerror="this.style.display='none'">
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color:var(--secondary);text-align:center;padding:20px;">هنوز پیامی ارسال نشده</p>
+        {% endif %}
+        {% if report.status != 'closed' and report.status != 'cancelled' and report.status != 'archived' and report.status != 'resolved' %}
 
-        {% if report.status == 'assigned' %}
-        <form method="post" action="{% url 'technicians:start_task' report.id %}" class="inline-form">
-            {% csrf_token %}
-            <select name="eta" class="form-input" style="width:auto;display:inline-block;" required>
-                <option value="">ETA انتخاب کنید</option>
-                <option value="0.5">۳۰ دقیقه</option>
-                <option value="1">۱ ساعت</option>
-                <option value="2">۲ ساعت</option>
-                <option value="4">۴ ساعت</option>
-                <option value="8">۸ ساعت</option>
-                <option value="24">۲۴ ساعت</option>
-            </select>
-            <button type="submit" class="btn btn-primary">▶ شروع کار</button>
-        </form>
+            <form method="post" action="{% url 'reports:send_message' report.id %}" enctype="multipart/form-data" style="margin-top:16px;">
+                {% csrf_token %}
+                <div class="form-group">
+                    <textarea name="message" class="form-input" rows="3" placeholder="پیام به گزارش‌دهنده..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>پیوست (اختیاری):</label>
+                    <input type="file" name="attachment" class="form-input" accept="image/*,.pdf">
+                </div>
+                <button type="submit" class="btn btn-primary">ارسال پیام</button>
+            </form>
+        {% else %}
+            <p style="text-align:center;color:var(--secondary);padding:12px;background:#F8F9FA;border-radius:8px;margin-top:12px;">🔒 این گزارش بسته شده و امکان ارسال پیام وجود ندارد.</p>
         {% endif %}
 
-        {% if report.status == 'in_progress' %}
-        <form method="post" action="{% url 'technicians:heading' report.id %}" class="inline-form">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary">🚶 در حال رفتن به محل</button>
-        </form>
-        <form method="post" action="{% url 'technicians:confirm_arrival' report.id %}" class="inline-form">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary">📍 تایید حضور در محل</button>
-        </form>
-        {% endif %}
-
-        {% if report.status == 'in_progress' %}
-        <form method="post" action="{% url 'technicians:complete_task' report.id %}" enctype="multipart/form-data" class="full-width-form">
-            {% csrf_token %}
-            <h4>✅ اتمام کار:</h4>
-            <textarea name="description" class="form-input" rows="3" placeholder="توضیح تعمیر انجام شده..." required></textarea>
-            <input type="file" name="after_photo" class="form-input" accept="image/*">
-            <small class="form-hint">آپلود عکس بعد از تعمیر (اختیاری)</small>
-            <button type="submit" class="btn btn-primary" style="background:#28A745;margin-top:8px;">تایید اتمام کار</button>
-        </form>
-        {% endif %}
-
-        {% if report.status == 'in_progress' or report.status == 'assigned' %}
-        <form method="post" action="{% url 'technicians:suspend_task' report.id %}" class="full-width-form">
-            {% csrf_token %}
-            <h4>⏸️ تعلیق:</h4>
-            <select name="reason" class="form-input" required>
-                <option value="">دلیل تعلیق را انتخاب کنید</option>
-                <option value="نیاز به قطعه">نیاز به قطعه</option>
-                <option value="نیازمند پاسخ گزارش‌دهنده">نیازمند پاسخ گزارش‌دهنده</option>
-                <option value="تداخل با ساعات کلاس">تداخل با ساعات کلاس</option>
-                <option value="عدم دسترسی به محل">عدم دسترسی به محل</option>
-                <option value="سایر">سایر</option>
-            </select>
-            <button type="submit" class="btn btn-outline-secondary" style="margin-top:8px;">تعلیق تسک</button>
-        </form>
-
-        <form method="post" action="{% url 'technicians:request_part' report.id %}" class="full-width-form">
-            {% csrf_token %}
-            <h4>🔩 درخواست قطعه:</h4>
-            <input type="text" name="part_name" class="form-input" placeholder="نام قطعه مورد نیاز..." required>
-            <button type="submit" class="btn btn-outline-secondary" style="margin-top:8px;">ارسال درخواست</button>
-        </form>
-        {% endif %}
     </div>
-</div>
-
-<!-- Timeline -->
-<div class="detail-card">
-    <h3>📅 خط زمانی</h3>
-    <ul class="timeline">
-        {% for log in logs %}
-        <li class="timeline-item">
-            <span class="timeline-time">{{ log.created_at|date:"Y/m/d H:i" }}</span>
-            <span class="timeline-action"><strong>{{ log.get_action_display }}</strong>{% if log.description %}: {{ log.description }}{% endif %}</span>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
+    <!-- Timeline -->
+    <div class="detail-card">
+        <h3>📅 خط زمانی</h3>
+        <ul class="timeline">
+            {% for log in logs %}
+                <li class="timeline-item">
+                    <span class="timeline-time">{{ log.created_at|date:"Y/m/d H:i" }}</span>
+                    <span class="timeline-action"><strong>{{ log.get_action_display }}</strong>{% if log.description %}: {{ log.description }}{% endif %}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
 {% endblock %}

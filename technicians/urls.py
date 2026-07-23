@@ -16,4 +16,6 @@ urlpatterns = [
     path('task/<int:report_id>/suspend/', views.suspend_task_view, name='suspend_task'),
     path('task/<int:report_id>/request-part/', views.request_part_view, name='request_part'),
     path('history/', views.work_history_view, name='work_history'),
+    path('task/<int:report_id>/resume/', views.resume_task_view, name='resume_task'),
+    path('my-tasks/', views.my_tasks_view, name='my_tasks'),
 ]

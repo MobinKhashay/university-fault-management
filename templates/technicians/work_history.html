@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}تاریخچه کارها{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/technician.css' %}">
+    <style>
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .history-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .history-stat { background: var(--white); border-radius: 12px; padding: 20px; text-align: center; box-shadow: var(--shadow); border-top: 3px solid; }
+        .history-stat .val { font-size: 28px; font-weight: 700; color: var(--dark); }
+        .history-stat .lbl { font-size: 13px; color: var(--secondary); margin-top: 4px; }
+        .filter-section { background: var(--white); border-radius: 12px; padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .filter-section form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .time-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+        .time-btn { padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; color: var(--secondary); border: 1px solid var(--border); background: white; transition: all 0.2s; }
+        .time-btn:hover { background: var(--light); }
+        .time-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .history-card { background: var(--white); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--primary-light); transition: transform 0.2s; }
+        .history-card:hover { transform: translateX(-4px); }
+        .history-info { flex: 1; }
+        .history-info h4 { font-size: 15px; color: var(--dark); margin-bottom: 6px; }
+        .history-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--secondary); }
+        .history-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 100px; }
+        .stars { font-size: 18px; color: #FFD700; }
+        .no-data { text-align: center; padding: 60px; color: var(--secondary); }
+        .no-data .icon { font-size: 48px; margin-bottom: 12px; }
+        @media (max-width: 768px) { .history-stats { grid-template-columns: 1fr; } .history-card { flex-direction: column; gap: 12px; align-items: flex-start; } .filter-section form { flex-direction: column; } }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="history-header">
+        <h1>📋 تاریخچه کارها</h1>
+        <a href="{% url 'technicians:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="history-stats">
+        <div class="history-stat" style="border-color:#28A745;">
+            <div class="val">{{ total_count }}</div>
+            <div class="lbl">کل تکمیل‌شده</div>
+        </div>
+        <div class="history-stat" style="border-color:#FFD700;">
+            <div class="val">{{ total_rating }} ⭐</div>
+            <div class="lbl">میانگین امتیاز</div>
+        </div>
+        <div class="history-stat" style="border-color:#2E75B6;">
+            <div class="val">{{ this_month }}</div>
+            <div class="lbl">این ماه</div>
+        </div>
+    </div>
+
+    <!-- Time Filters -->
+    <div class="filter-section">
+        <div class="time-filters">
+            <a href="?rating={{ current_rating }}&q={{ search }}" class="time-btn {% if not current_time %}active{% endif %}">همه</a>
+            <a href="?time=today&rating={{ current_rating }}&q={{ search }}" class="time-btn {% if current_time == 'today' %}active{% endif %}">امروز</a>
+            <a href="?time=week&rating={{ current_rating }}&q={{ search }}" class="time-btn {% if current_time == 'week' %}active{% endif %}">این هفته</a>
+            <a href="?time=month&rating={{ current_rating }}&q={{ search }}" class="time-btn {% if current_time == 'month' %}active{% endif %}">این ماه</a>
+            <a href="?time=3month&rating={{ current_rating }}&q={{ search }}" class="time-btn {% if current_time == '3month' %}active{% endif %}">۳ ماه اخیر</a>
+            <a href="?time=year&rating={{ current_rating }}&q={{ search }}" class="time-btn {% if current_time == 'year' %}active{% endif %}">امسال</a>
+        </div>
+        <form method="get">
+            <input type="hidden" name="time" value="{{ current_time }}">
+            <input type="text" name="q" value="{{ search }}" class="form-input" style="flex:1;min-width:180px;" placeholder="جستجو (شماره، عنوان، مکان...)">
+            <select name="rating" class="form-input" style="width:140px;">
+                <option value="">همه امتیازها</option>
+                <option value="5" {% if current_rating == '5' %}selected{% endif %}>⭐⭐⭐⭐⭐ عالی</option>
+                <option value="4" {% if current_rating == '4' %}selected{% endif %}>⭐⭐⭐⭐ خوب</option>
+                <option value="3" {% if current_rating == '3' %}selected{% endif %}>⭐⭐⭐ متوسط</option>
+                <option value="2" {% if current_rating == '2' %}selected{% endif %}>⭐⭐ ضعیف</option>
+                <option value="1" {% if current_rating == '1' %}selected{% endif %}>⭐ بد</option>
+            </select>
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </form>
+    </div>
+
+    <!-- Results -->
+    {% for report in reports %}
+        <div class="history-card">
+            <div class="history-info">
+                <h4><span style="color:var(--primary);font-weight:700;">#{{ report.id }}</span> — {{ report.title }}</h4>
+                <div class="history-meta">
+                    <span>📍 {{ report.location }}</span>
+                    <span>🔧 {{ report.category }}</span>
+                    <span>📅 {{ report.closed_at|date:"Y/m/d" }}</span>
+                    <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+                </div>
+            </div>
+            <div class="history-actions">
+                {% if report.rating %}
+                    <div class="stars">{% for i in "12345" %}{% if forloop.counter <= report.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+                    <div style="font-size:11px;color:#999;">{{ report.rating }} از ۵</div>
+                {% else %}
+                    <div class="stars" style="color:#ccc;">☆☆☆☆☆</div>
+                    <div style="font-size:11px;color:#999;">بدون امتیاز</div>
+                {% endif %}
+                <a href="{% url 'technicians:task_detail' report.id %}" class="btn btn-primary" style="padding:6px 16px;font-size:12px;">مشاهده جزئیات</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-data">
+            <div class="icon">📭</div>
+            <p>تسکی یافت نشد</p>
+        </div>
+    {% endfor %}
+
+    {% include "includes/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}تایید هویت کاربران{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>🪪 تایید هویت کاربران</h1>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a>
+    </div>
+
+
+    <div class="section-card">
+        <h3>در انتظار تایید ({{ unverified|length }})</h3>
+        {% for user in unverified %}
+            <div style="background:#F8F9FA;border-radius:12px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <strong>{{ user.full_name }}</strong> — {{ user.get_role_display }}<br>
+                    <span style="font-size:13px;color:#666;">شماره: {{ user.student_id }} | ایمیل: {{ user.email }}</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    {% if user.id_card_image %}
+                        <a href="{{ user.id_card_image.url }}" target="_blank" style="background:#E8F0FE;padding:8px 16px;border-radius:8px;text-decoration:none;color:#1F4E79;font-size:13px;">🪪 مشاهده کارت</a>
+                    {% else %}
+                        <span style="color:#999;font-size:13px;">کارت آپلود نشده</span>
+                    {% endif %}
+                    <form method="post" action="{% url 'admin_panel:approve_user' user.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button class="btn-sm btn-success" style="padding:8px 16px;">✅ تایید</button>
+                    </form>
+                    <button class="btn-sm btn-danger" style="padding:8px 16px;" onclick="showRejectModal({{ user.id }}, '{{ user.full_name }}')">❌ رد</button>
+                </div>
+            </div>
+            {% empty %}
+            <p style="text-align:center;color:#999;padding:20px;">همه کاربران تایید شده‌اند ✅</p>
+        {% endfor %}
+    </div>
+
+    <!-- Reject Modal -->
+    <div id="reject-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:16px;width:90%;max-width:450px;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden;">
+            <div style="background:#FFF5F5;padding:20px;text-align:center;border-bottom:1px solid #FED7D7;">
+                <div style="font-size:42px;margin-bottom:8px;">❌</div>
+                <h3 style="color:#C53030;margin:0;font-size:18px;">رد تصویر کارت شناسایی</h3>
+                <p id="reject-user-name" style="color:#999;font-size:14px;margin-top:4px;"></p>
+            </div>
+            <form id="reject-form" method="post" style="padding:20px;">
+                {% csrf_token %}
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:14px;font-weight:600;color:#333;display:block;margin-bottom:8px;">دلیل رد:</label>
+                    <select id="reject-reason-select" style="width:100%;padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;margin-bottom:8px;" onchange="toggleCustomReason()">
+                        <option value="تصویر کارت شناسایی ناخوانا است">تصویر ناخوانا است</option>
+                        <option value="تصویر کارت شناسایی ناقص است">تصویر ناقص است</option>
+                        <option value="تصویر با مشخصات کاربر مطابقت ندارد">عدم تطابق با مشخصات</option>
+                        <option value="تصویر نامعتبر است">تصویر نامعتبر</option>
+                        <option value="custom">سایر...</option>
+                    </select>
+                    <textarea id="reject-custom-reason" name="reason" rows="3" placeholder="دلیل رد را بنویسید..." style="width:100%;padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;display:none;resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" onclick="document.getElementById('reject-modal').style.display='none'" style="padding:10px 24px;border-radius:8px;border:1.5px solid #ddd;background:white;cursor:pointer;font-family:inherit;font-size:14px;">انصراف</button>
+                    <button type="submit" style="padding:10px 24px;border-radius:8px;border:none;background:#DC3545;color:white;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;">تایید رد</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showRejectModal(userId, userName) {
+            var modal = document.getElementById('reject-modal');
+            var form = document.getElementById('reject-form');
+            var nameEl = document.getElementById('reject-user-name');
+
+            form.action = '/panel/verify-users/' + userId + '/reject/';
+            nameEl.textContent = userName;
+            document.getElementById('reject-reason-select').selectedIndex = 0;
+            document.getElementById('reject-custom-reason').style.display = 'none';
+            modal.style.display = 'flex';
+
+            modal.onclick = function(e) {
+                if (e.target === modal) modal.style.display = 'none';
+            };
+        }
+
+        function toggleCustomReason() {
+            var select = document.getElementById('reject-reason-select');
+            var textarea = document.getElementById('reject-custom-reason');
+            if (select.value === 'custom') {
+                textarea.style.display = 'block';
+                textarea.required = true;
+                textarea.value = '';
+            } else {
+                textarea.style.display = 'none';
+                textarea.required = false;
+                textarea.value = select.value;
+            }
+        }
+
+        document.getElementById('reject-form').addEventListener('submit', function() {
+            var select = document.getElementById('reject-reason-select');
+            var textarea = document.getElementById('reject-custom-reason');
+            if (select.value !== 'custom') {
+                textarea.value = select.value;
+            }
+        });
+    </script>
+{% endblock %}

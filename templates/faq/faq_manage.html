@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}مدیریت FAQ{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>❓ مدیریت سوالات متداول</h1>
+    <a href="{% url 'faq:create' %}" class="btn btn-primary">+ افزودن سوال جدید</a>
+</div>
+
+
+
+<div class="section-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>سوال</th>
+                <th>دسته‌بندی</th>
+                <th>👍</th>
+                <th>👎</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for faq in faqs %}
+            <tr>
+                <td>{{ faq.question|truncatechars:50 }}</td>
+                <td>{{ faq.get_category_display }}</td>
+                <td>{{ faq.likes }}</td>
+                <td>{{ faq.dislikes }}</td>
+                <td>
+                    <form method="post" action="{% url 'faq:delete' faq.id %}" style="display:inline;" onsubmit="return confirm('حذف شود؟')">
+                        {% csrf_token %}
+                        <button class="btn-sm btn-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-state">سوالی ثبت نشده</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

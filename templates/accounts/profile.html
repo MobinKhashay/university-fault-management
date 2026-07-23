@@ -4,54 +4,211 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
 
 {% block content %}
-<div class="auth-container" style="background:var(--light);min-height:auto;padding:24px;">
-    <div class="auth-card" style="max-width:600px;">
-        <div class="auth-header">
-            <h1 class="auth-title">پروفایل کاربری</h1>
-            <p class="auth-subtitle">{{ user.full_name }} — {{ user.get_role_display }}</p>
+    <div class="auth-container" style="background:var(--light);min-height:auto;padding:24px;">
+        <div class="auth-card" style="max-width:600px;">
+            <div class="auth-header" style="text-align:center;">
+                {% if user.profile_image %}
+                    <img src="{{ user.profile_image.url }}" alt="profile" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid var(--primary-light);">
+                {% else %}
+                    <div style="width:80px;height:80px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;margin:0 auto 12px;">{{ user.first_name|first }}</div>
+                {% endif %}
+                <h1 class="auth-title">پروفایل کاربری</h1>
+                <p class="auth-subtitle">{{ user.full_name }} — {{ user.get_role_display }}</p>
+            </div>
+
+
+
+            <!-- Stats -->
+            {% if stats %}
+                <div style="background:#F0F4FF;padding:16px;border-radius:8px;margin-bottom:20px;">
+                    {% for key, val in stats.items %}
+                        <span style="margin-left:20px;"><strong>{{ key }}:</strong> {{ val }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Profile Info (non-editable) -->
+            <div style="background:var(--light);padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;">
+                <p><strong>نام:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+                <p><strong>شماره شناسایی:</strong> {{ user.student_id }}</p>
+                <p><strong>نقش:</strong> {{ user.get_role_display }}</p>
+            </div>
+
+            <!-- Edit Profile -->
+            <form method="post" enctype="multipart/form-data" class="auth-form">
+                {% csrf_token %}
+                <h3>ویرایش اطلاعات</h3>
+                <div class="form-group"><label>ایمیل</label>{{ form.email }}</div>
+                <div class="form-group"><label>شماره تلفن</label>{{ form.phone }}</div>
+                <div class="form-group"><label>تصویر پروفایل</label>{{ form.profile_image }}</div>
+                {% if not user.is_technician %}
+                    <div class="form-group">
+                        <label>تصویر کارت شناسایی</label>
+                        {% if user.id_card_image %}
+                            {% if user.is_id_verified %}
+                                <div style="background:#D4EDDA;padding:10px 16px;border-radius:8px;margin-bottom:8px;font-size:13px;color:#155724;">✅ کارت شناسایی تایید شده</div>
+                            {% else %}
+                                <div style="background:#FFF3CD;padding:10px 16px;border-radius:8px;margin-bottom:8px;font-size:13px;color:#856404;">⏳ در انتظار تایید توسط مدیر</div>
+                            {% endif %}
+                            <a href="{{ user.id_card_image.url }}" target="_blank" style="font-size:13px;color:var(--primary);">🪪 مشاهده تصویر فعلی</a>
+                        {% else %}
+                            <div style="background:#F8D7DA;padding:10px 16px;border-radius:8px;margin-bottom:8px;font-size:13px;color:#721C24;">⚠️ تصویر کارت شناسایی آپلود نشده یا رد شده. لطفاً تصویر جدید آپلود کنید.</div>
+                        {% endif %}
+                        {{ form.id_card_image }}
+                    </div>
+                {% endif %}
+                <button type="submit" name="update_profile" class="btn btn-primary btn-block">بروزرسانی پروفایل</button>
+            </form>
+
+            <hr style="margin:24px 0;">
+
+            <form method="post" class="auth-form" id="password-form">
+                {% csrf_token %}
+                <h3>🔒 تغییر رمز عبور</h3>
+
+                <div class="form-group">
+                    <label>رمز عبور فعلی</label>
+                    <div style="position:relative;">
+                        <input type="password" name="old_password" id="old_pass" class="form-input" required style="padding-left:40px;">
+                        <button type="button" onclick="togglePass('old_pass', this)" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>رمز عبور جدید</label>
+                    <div style="position:relative;">
+                        <input type="password" name="new_password" id="new_pass" class="form-input" required minlength="8" style="padding-left:40px;" oninput="checkStrength(); checkMatch();">
+                        <button type="button" onclick="togglePass('new_pass', this)" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;">👁️</button>
+                    </div>
+                    <!-- Strength Bar -->
+                    <div style="margin-top:6px;">
+                        <div style="height:6px;background:#eee;border-radius:3px;overflow:hidden;">
+                            <div id="strength-bar" style="height:100%;width:0%;border-radius:3px;transition:all 0.3s;"></div>
+                        </div>
+                        <div id="strength-text" style="font-size:12px;margin-top:4px;color:#999;"></div>
+                    </div>
+                    <!-- Rules -->
+                    <div style="margin-top:8px;font-size:12px;" id="pass-rules">
+                        <div id="rule-length" style="color:#DC3545;">✗ حداقل ۸ کاراکتر</div>
+                        <div id="rule-upper" style="color:#DC3545;">✗ حداقل یک حرف بزرگ</div>
+                        <div id="rule-lower" style="color:#DC3545;">✗ حداقل یک حرف کوچک</div>
+                        <div id="rule-number" style="color:#DC3545;">✗ حداقل یک عدد</div>
+                        <div id="rule-special" style="color:#DC3545;">✗ حداقل یک کاراکتر خاص (!@#$...)</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>تکرار رمز جدید</label>
+                    <div style="position:relative;">
+                        <input type="password" name="confirm_password" id="confirm_pass" class="form-input" required style="padding-left:40px;" oninput="checkMatch();">
+                        <button type="button" onclick="togglePass('confirm_pass', this)" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;">👁️</button>
+                    </div>
+                    <div id="match-status" style="font-size:12px;margin-top:4px;"></div>
+                </div>
+
+                <button type="submit" name="change_password" id="change-pass-btn" class="btn btn-primary btn-block" disabled style="opacity:0.5;">تغییر رمز عبور</button>
+            </form>
+
+            <script>
+                function togglePass(id, btn) {
+                    var input = document.getElementById(id);
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        btn.textContent = '🙈';
+                    } else {
+                        input.type = 'password';
+                        btn.textContent = '👁️';
+                    }
+                }
+
+                function checkStrength() {
+                    var pass = document.getElementById('new_pass').value;
+                    var bar = document.getElementById('strength-bar');
+                    var text = document.getElementById('strength-text');
+                    var score = 0;
+
+                    var hasLength = pass.length >= 8;
+                    var hasUpper = /[A-Z]/.test(pass);
+                    var hasLower = /[a-z]/.test(pass);
+                    var hasNumber = /[0-9]/.test(pass);
+                    var hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]/.test(pass);
+
+                    if (hasLength) score++;
+                    if (hasUpper) score++;
+                    if (hasLower) score++;
+                    if (hasNumber) score++;
+                    if (hasSpecial) score++;
+
+                    // Update rules
+                    document.getElementById('rule-length').style.color = hasLength ? '#28A745' : '#DC3545';
+                    document.getElementById('rule-length').textContent = (hasLength ? '✓' : '✗') + ' حداقل ۸ کاراکتر';
+                    document.getElementById('rule-upper').style.color = hasUpper ? '#28A745' : '#DC3545';
+                    document.getElementById('rule-upper').textContent = (hasUpper ? '✓' : '✗') + ' حداقل یک حرف بزرگ';
+                    document.getElementById('rule-lower').style.color = hasLower ? '#28A745' : '#DC3545';
+                    document.getElementById('rule-lower').textContent = (hasLower ? '✓' : '✗') + ' حداقل یک حرف کوچک';
+                    document.getElementById('rule-number').style.color = hasNumber ? '#28A745' : '#DC3545';
+                    document.getElementById('rule-number').textContent = (hasNumber ? '✓' : '✗') + ' حداقل یک عدد';
+                    document.getElementById('rule-special').style.color = hasSpecial ? '#28A745' : '#DC3545';
+                    document.getElementById('rule-special').textContent = (hasSpecial ? '✓' : '✗') + ' حداقل یک کاراکتر خاص (!@#$...)';
+
+                    // Update bar
+                    var colors = ['#DC3545', '#FF6B35', '#FFC107', '#8BC34A', '#28A745'];
+                    var labels = ['خیلی ضعیف', 'ضعیف', 'متوسط', 'قوی', 'خیلی قوی'];
+                    var widths = [20, 40, 60, 80, 100];
+
+                    if (pass.length === 0) {
+                        bar.style.width = '0%';
+                        text.textContent = '';
+                    } else {
+                        var idx = Math.max(0, score - 1);
+                        bar.style.width = widths[idx] + '%';
+                        bar.style.background = colors[idx];
+                        text.textContent = labels[idx];
+                        text.style.color = colors[idx];
+                    }
+
+                    updateSubmitBtn();
+                }
+
+                function checkMatch() {
+                    var newPass = document.getElementById('new_pass').value;
+                    var confirm = document.getElementById('confirm_pass').value;
+                    var status = document.getElementById('match-status');
+
+                    if (confirm.length === 0) {
+                        status.textContent = '';
+                    } else if (newPass === confirm) {
+                        status.textContent = '✓ رمزها مطابقت دارند';
+                        status.style.color = '#28A745';
+                    } else {
+                        status.textContent = '✗ رمزها مطابقت ندارند';
+                        status.style.color = '#DC3545';
+                    }
+
+                    updateSubmitBtn();
+                }
+
+                function updateSubmitBtn() {
+                    var newPass = document.getElementById('new_pass').value;
+                    var confirm = document.getElementById('confirm_pass').value;
+                    var oldPass = document.getElementById('old_pass').value;
+                    var btn = document.getElementById('change-pass-btn');
+
+                    var strong = newPass.length >= 8 && /[A-Z]/.test(newPass) && /[a-z]/.test(newPass) && /[0-9]/.test(newPass);
+                    var match = newPass === confirm && confirm.length > 0;
+                    var hasOld = oldPass.length > 0;
+
+                    if (strong && match && hasOld) {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    } else {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                    }
+                }
+
+                document.getElementById('old_pass').addEventListener('input', updateSubmitBtn);
+            </script>
         </div>
-
-        {% if messages %}
-        <div class="messages">{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}</div>
-        {% endif %}
-
-        <!-- Stats -->
-        {% if stats %}
-        <div style="background:#F0F4FF;padding:16px;border-radius:8px;margin-bottom:20px;">
-            {% for key, val in stats.items %}
-            <span style="margin-left:20px;"><strong>{{ key }}:</strong> {{ val }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- Profile Info (non-editable) -->
-        <div style="background:var(--light);padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;">
-            <p><strong>نام:</strong> {{ user.first_name }} {{ user.last_name }}</p>
-            <p><strong>شماره شناسایی:</strong> {{ user.student_id }}</p>
-            <p><strong>نقش:</strong> {{ user.get_role_display }}</p>
-        </div>
-
-        <!-- Edit Profile -->
-        <form method="post" enctype="multipart/form-data" class="auth-form">
-            {% csrf_token %}
-            <h3>ویرایش اطلاعات</h3>
-            <div class="form-group"><label>ایمیل</label>{{ form.email }}</div>
-            <div class="form-group"><label>شماره تلفن</label>{{ form.phone }}</div>
-            <div class="form-group"><label>تصویر پروفایل</label>{{ form.profile_image }}</div>
-            <button type="submit" name="update_profile" class="btn btn-primary btn-block">بروزرسانی پروفایل</button>
-        </form>
-
-        <hr style="margin:24px 0;">
-
-        <!-- Change Password -->
-        <form method="post" class="auth-form">
-            {% csrf_token %}
-            <h3>تغییر رمز عبور</h3>
-            <div class="form-group"><label>{{ pw_form.old_password.label }}</label>{{ pw_form.old_password }}</div>
-            <div class="form-group"><label>{{ pw_form.new_password.label }}</label>{{ pw_form.new_password }}</div>
-            <div class="form-group"><label>{{ pw_form.confirm_password.label }}</label>{{ pw_form.confirm_password }}</div>
-            <button type="submit" name="change_password" class="btn btn-primary btn-block">تغییر رمز عبور</button>
-        </form>
     </div>
-</div>
 {% endblock %}

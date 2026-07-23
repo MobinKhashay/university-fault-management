@@ -1,3 +1,9 @@
 from django.contrib import admin
+from .models import FAQ, FAQVote
 
-# Register your models here.
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ['question', 'category', 'likes', 'dislikes']
+    list_filter = ['category']
+
+admin.site.register(FAQVote)

@@ -4,117 +4,117 @@
 {% block title %}داشبورد مدیر - سامانه خرابی دانشگاه{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>داشبورد مدیریت</h1>
-    <div class="quick-actions">
-        <a href="{% url 'admin_panel:manage_reports' %}" class="btn btn-outline-secondary">مدیریت گزارش‌ها</a>
+    <div class="page-header">
+        <h1>داشبورد مدیریت</h1>
+        <div class="quick-actions">
+            <a href="{% url 'admin_panel:manage_reports' %}" class="btn btn-outline-secondary">مدیریت گزارش‌ها</a>
+        </div>
     </div>
-</div>
 
-<!-- KPI Cards -->
-<div class="kpi-grid">
-    <div class="kpi-card kpi-blue">
-        <div class="kpi-value">{{ active_tickets }}</div>
-        <div class="kpi-label">تیکت‌های فعال</div>
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+            <div class="kpi-value">{{ active_tickets }}</div>
+            <div class="kpi-label">تیکت‌های فعال</div>
+        </div>
+        <div class="kpi-card kpi-orange">
+            <div class="kpi-value">{{ queue_tickets }}</div>
+            <div class="kpi-label">در صف انتظار</div>
+        </div>
+        <div class="kpi-card kpi-green">
+            <div class="kpi-value">{{ active_technicians }}</div>
+            <div class="kpi-label">تکنسین حاضر</div>
+        </div>
+        <div class="kpi-card kpi-purple">
+            <div class="kpi-value">{{ avg_rating }} ⭐</div>
+            <div class="kpi-label">نرخ رضایت ماه</div>
+        </div>
     </div>
-    <div class="kpi-card kpi-orange">
-        <div class="kpi-value">{{ queue_tickets }}</div>
-        <div class="kpi-label">در صف انتظار</div>
-    </div>
-    <div class="kpi-card kpi-green">
-        <div class="kpi-value">{{ active_technicians }}</div>
-        <div class="kpi-label">تکنسین حاضر</div>
-    </div>
-    <div class="kpi-card kpi-purple">
-        <div class="kpi-value">{{ avg_rating }} ⭐</div>
-        <div class="kpi-label">نرخ رضایت ماه</div>
-    </div>
-</div>
 
-<!-- Charts Row -->
-<div class="charts-row">
-    <div class="chart-card">
-        <h3>وضعیت تیکت‌ها</h3>
-        <canvas id="statusChart" height="250"></canvas>
+    <!-- Charts Row -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>وضعیت تیکت‌ها</h3>
+            <canvas id="statusChart" height="250"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>توزیع خرابی‌ها بر اساس دانشکده</h3>
+            <canvas id="facultyChart" height="250"></canvas>
+        </div>
     </div>
-    <div class="chart-card">
-        <h3>توزیع خرابی‌ها بر اساس دانشکده</h3>
-        <canvas id="facultyChart" height="250"></canvas>
-    </div>
-</div>
 
-<!-- Approval Required -->
-{% if pending_parts %}
-<div class="section-card">
-    <h3>📋 درخواست‌های قطعه نیازمند تایید</h3>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>شماره تیکت</th>
-                <th>تکنسین</th>
-                <th>قطعه درخواستی</th>
-                <th>عملیات</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for part in pending_parts %}
-            <tr>
-                <td>#{{ part.report.id }}</td>
-                <td>{{ part.technician.user.full_name }}</td>
-                <td>{{ part.part_name }}</td>
-                <td>
-                    <form method="post" action="{% url 'admin_panel:approve_part' part.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button class="btn-sm btn-success">تایید</button>
-                    </form>
-                    <form method="post" action="{% url 'admin_panel:reject_part' part.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button class="btn-sm btn-danger">رد</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
+    <!-- Approval Required -->
+    {% if pending_parts %}
+        <div class="section-card">
+            <h3>📋 درخواست‌های قطعه نیازمند تایید</h3>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>شماره تیکت</th>
+                    <th>تکنسین</th>
+                    <th>قطعه درخواستی</th>
+                    <th>عملیات</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for part in pending_parts %}
+                    <tr>
+                        <td>#{{ part.report.id }}</td>
+                        <td>{{ part.technician.user.full_name }}</td>
+                        <td>{{ part.part_name }}</td>
+                        <td>
+                            <form method="post" action="{% url 'admin_panel:approve_part' part.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="btn-sm btn-success">تایید</button>
+                            </form>
+                            <form method="post" action="{% url 'admin_panel:reject_part' part.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="btn-sm btn-danger">رد</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 
-<!-- Suspended Tickets -->
-{% if suspended_tickets %}
-<div class="section-card">
-    <h3>⏸️ تیکت‌های معلق</h3>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>شماره</th>
-                <th>عنوان</th>
-                <th>تکنسین</th>
-                <th>دلیل تعلیق</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for ticket in suspended_tickets %}
-            <tr>
-                <td>#{{ ticket.id }}</td>
-                <td>{{ ticket.title }}</td>
-                <td>{{ ticket.technician.user.full_name|default:"—" }}</td>
-                <td>{{ ticket.suspension_reason|default:"—" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
+    <!-- Suspended Tickets -->
+    {% if suspended_tickets %}
+        <div class="section-card">
+            <h3>⏸️ تیکت‌های معلق</h3>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>شماره</th>
+                    <th>عنوان</th>
+                    <th>تکنسین</th>
+                    <th>دلیل تعلیق</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for ticket in suspended_tickets %}
+                    <tr>
+                        <td>#{{ ticket.id }}</td>
+                        <td>{{ ticket.title }}</td>
+                        <td>{{ ticket.technician.user.full_name|default:"—" }}</td>
+                        <td>{{ ticket.suspension_reason|default:"—" }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 
-<!-- Technician Monitoring -->
-<div class="section-card">
-    <h3>👷 مانیتورینگ تکنسین‌ها</h3>
-    <table class="data-table">
-        <thead>
+    <!-- Technician Monitoring -->
+    <div class="section-card">
+        <h3>👷 مانیتورینگ تکنسین‌ها</h3>
+        <table class="data-table">
+            <thead>
             <tr>
                 <th>نام تکنسین</th>
                 <th>تخصص</th>
@@ -122,63 +122,82 @@
                 <th>تسک فعال</th>
                 <th>انجام‌شده امروز</th>
             </tr>
-        </thead>
-        <tbody>
+            </thead>
+            <tbody>
             {% for tech in technicians %}
-            <tr>
-                <td>{{ tech.name }}</td>
-                <td>{{ tech.specialty }}</td>
-                <td>
-                    <span class="status-badge status-{{ tech.status_raw }}">{{ tech.status }}</span>
-                </td>
-                <td>{{ tech.active_tasks }}</td>
-                <td>{{ tech.today_completed }}</td>
-            </tr>
+                <tr>
+                    <td>{{ tech.name }}</td>
+                    <td>{{ tech.specialty }}</td>
+                    <td>
+                        <span class="status-badge status-{{ tech.status_raw }}">{{ tech.status }}</span>
+                    </td>
+                    <td>{{ tech.active_tasks }}</td>
+                    <td>{{ tech.today_completed }}</td>
+                </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-    // Pie Chart: Ticket Status
-    var ctx1 = document.getElementById('statusChart').getContext('2d');
-    new Chart(ctx1, {
-        type: 'doughnut',
-        data: {
-            labels: {{ status_labels|safe }},
-            datasets: [{
-                data: {{ status_counts|safe }},
-                backgroundColor: ['#FFC107','#17A2B8','#2E75B6','#FF9800','#28A745','#6C757D','#DC3545','#343A40'],
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Vazirmatn, Tahoma' } } } }
-        }
-    });
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Pie Chart: Ticket Status
+        var ctx1 = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: {{ status_labels|safe }},
+                datasets: [{
+                    data: {{ status_counts|safe }},
+                    backgroundColor: ['#FFC107','#17A2B8','#2E75B6','#FF9800','#28A745','#6C757D','#DC3545','#343A40'],
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { font: { family: 'Vazirmatn, Tahoma' } } } }
+            }
+        });
 
-    // Bar Chart: Faculty Distribution
-    var ctx2 = document.getElementById('facultyChart').getContext('2d');
-    new Chart(ctx2, {
-        type: 'bar',
-        data: {
-            labels: {{ faculty_labels|safe }},
-            datasets: [{
-                label: 'تعداد گزارش',
-                data: {{ faculty_counts|safe }},
-                backgroundColor: '#2E75B6',
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true } }
-        }
-    });
-</script>
+        // Bar Chart: Faculty Distribution
+        var ctx2 = document.getElementById('facultyChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: {{ faculty_labels|safe }},
+                datasets: [{
+                    label: 'تعداد گزارش',
+                    data: {{ faculty_counts|safe }},
+                    backgroundColor: '#2E75B6',
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+        // Auto-refresh KPIs every 60 seconds
+        setInterval(function() {
+            fetch('/panel/dashboard/?ajax=1')
+                .then(function(r) { return r.text(); })
+                .then(function(html) {
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(html, 'text/html');
+                    var newKPIs = doc.querySelectorAll('.kpi-value');
+                    var oldKPIs = document.querySelectorAll('.kpi-value');
+                    newKPIs.forEach(function(el, i) {
+                        if (oldKPIs[i] && oldKPIs[i].textContent !== el.textContent) {
+                            oldKPIs[i].textContent = el.textContent;
+                            oldKPIs[i].style.transition = 'color 0.3s';
+                            oldKPIs[i].style.color = '#28A745';
+                            setTimeout(function() { oldKPIs[i].style.color = ''; }, 2000);
+                        }
+                    });
+                });
+        }, 60000);
+    </script>
 {% endblock %}

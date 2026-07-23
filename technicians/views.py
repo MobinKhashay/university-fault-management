@@ -259,17 +259,23 @@ def complete_task_view(request, report_id):
 
 @technician_required
 def suspend_task_view(request, report_id):
-    """
-    Technician suspends a task with reason.
-    US-13: تعلیق با ذکر دلیل
-    """
+    """Technician suspends a task with reason."""
     if request.method == 'POST':
         tech = request.user.technician_profile
         report = get_object_or_404(Report, id=report_id, technician=tech)
 
         reason = request.POST.get('reason', '')
-        if not reason:
+        other_reason = request.POST.get('other_reason', '').strip()
+
+        # If "سایر" selected, use the text from textarea
+        if reason == 'سایر' and other_reason:
+            reason = f'سایر: {other_reason}'
+        elif reason == 'سایر' and not other_reason:
             messages.error(request, 'لطفاً دلیل تعلیق را وارد کنید.')
+            return redirect('technicians:task_detail', report_id=report_id)
+
+        if not reason:
+            messages.error(request, 'لطفاً دلیل تعلیق را انتخاب کنید.')
             return redirect('technicians:task_detail', report_id=report_id)
 
         report.status = 'suspended'
@@ -291,6 +297,31 @@ def suspend_task_view(request, report_id):
         messages.success(request, 'تسک معلق شد.')
     return redirect('technicians:dashboard')
 
+@technician_required
+def resume_task_view(request, report_id):
+    """Resume a suspended task."""
+    if request.method == 'POST':
+        tech = request.user.technician_profile
+        report = get_object_or_404(Report, id=report_id, technician=tech)
+
+        report.status = 'in_progress'
+        report.suspension_reason = ''
+        report.save()
+
+        RepairLog.objects.create(
+            report=report, technician=tech,
+            action='resumed',
+            description='ازسرگیری کار توسط تکنسین',
+        )
+
+        Notification.objects.create(
+            user=report.reporter, report=report,
+            type='status_change',
+            message=f'گزارش #{report.id} از حالت تعلیق خارج شد.',
+        )
+
+        messages.success(request, 'تسک از حالت تعلیق خارج شد.')
+    return redirect('technicians:task_detail', report_id=report_id)
 
 @technician_required
 def request_part_view(request, report_id):
@@ -316,24 +347,138 @@ def request_part_view(request, report_id):
 
 @technician_required
 def work_history_view(request):
-    """
-    Technician work history with filters.
-    US-15: تاریخچه کارها با فیلتر
-    """
-    tech = request.user.technician_profile
+    """Technician work history with filters."""
+    from django.core.paginator import Paginator
+    from django.db.models import Avg
+    import datetime
 
+    tech = request.user.technician_profile
     reports = Report.objects.filter(
         technician=tech,
         status__in=['resolved', 'closed', 'archived'],
     ).select_related('location__building__faculty', 'category').order_by('-closed_at')
+
+    # Time filter
+    time_filter = request.GET.get('time', '')
+    now = timezone.now()
+    if time_filter == 'today':
+        reports = reports.filter(closed_at__date=now.date())
+    elif time_filter == 'week':
+        reports = reports.filter(closed_at__gte=now - timezone.timedelta(days=7))
+    elif time_filter == 'month':
+        reports = reports.filter(closed_at__month=now.month, closed_at__year=now.year)
+    elif time_filter == '3month':
+        reports = reports.filter(closed_at__gte=now - timezone.timedelta(days=90))
+    elif time_filter == 'year':
+        reports = reports.filter(closed_at__year=now.year)
 
     # Rating filter
     rating_filter = request.GET.get('rating', '')
     if rating_filter:
         reports = reports.filter(rating=int(rating_filter))
 
+    # Search
+    search = request.GET.get('q', '')
+    if search:
+        reports = reports.filter(
+            Q(id__icontains=search) | Q(title__icontains=search) |
+            Q(location__building__name__icontains=search)
+        )
+
+    # Stats
+    all_completed = Report.objects.filter(technician=tech, status__in=['resolved', 'closed', 'archived'])
+    avg_rating = all_completed.filter(rating__isnull=False).aggregate(avg=Avg('rating'))['avg'] or 0
+    this_month = all_completed.filter(closed_at__month=now.month).count()
+
+    # Pagination
+    paginator = Paginator(reports, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    query_string = ''
+    if time_filter: query_string += f'time={time_filter}&'
+    if rating_filter: query_string += f'rating={rating_filter}&'
+    if search: query_string += f'q={search}&'
+
     context = {
-        'reports': reports,
+        'reports': page_obj,
+        'page_obj': page_obj,
+        'total_rating': round(avg_rating, 1),
+        'this_month': this_month,
+        'total_count': all_completed.count(),
+        'current_time': time_filter,
         'current_rating': rating_filter,
+        'search': search,
+        'query_string': query_string,
     }
     return render(request, 'technicians/work_history.html', context)
+
+
+
+@technician_required
+def my_tasks_view(request):
+    """Technician's tasks page with search, filters, and tabs."""
+    tech = request.user.technician_profile
+    all_tasks = Report.objects.filter(technician=tech).select_related(
+        'location__building__faculty', 'category'
+    )
+
+    # Search
+    search = request.GET.get('q', '')
+    if search:
+        all_tasks = all_tasks.filter(
+            Q(id__icontains=search) | Q(title__icontains=search) |
+            Q(location__building__name__icontains=search) | Q(category__name__icontains=search)
+        )
+
+    # Filter by priority
+    priority_filter = request.GET.get('priority', '')
+    if priority_filter:
+        all_tasks = all_tasks.filter(priority=priority_filter)
+
+    # Filter by category
+    category_filter = request.GET.get('category', '')
+    if category_filter:
+        all_tasks = all_tasks.filter(category_id=category_filter)
+
+    # Tab data
+    from django.utils import timezone
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    current_tasks = all_tasks.filter(status__in=['assigned', 'in_progress', 'suspended']).order_by('-created_at')
+    today_tasks = all_tasks.filter(created_at__gte=today_start).order_by('-created_at')
+    archived_tasks = all_tasks.filter(status__in=['resolved', 'closed', 'archived']).order_by('-closed_at')
+
+    # Pagination
+    from django.core.paginator import Paginator
+    tab = request.GET.get('tab', 'current')
+
+    if tab == 'today':
+        paginator = Paginator(today_tasks, 10)
+    elif tab == 'archived':
+        paginator = Paginator(archived_tasks, 10)
+    else:
+        paginator = Paginator(current_tasks, 10)
+
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    query_string = ''
+    if search: query_string += f'q={search}&'
+    if priority_filter: query_string += f'priority={priority_filter}&'
+    if category_filter: query_string += f'category={category_filter}&'
+    if tab: query_string += f'tab={tab}&'
+
+    from reports.models import FaultCategory
+    context = {
+        'tasks': page_obj,
+        'page_obj': page_obj,
+        'search': search,
+        'current_tab': tab,
+        'current_priority': priority_filter,
+        'current_category': category_filter,
+        'categories': FaultCategory.objects.all(),
+        'query_string': query_string,
+        'current_count': current_tasks.count(),
+        'today_count': today_tasks.count(),
+        'archived_count': archived_tasks.count(),
+    }
+    return render(request, 'technicians/my_tasks.html', context)

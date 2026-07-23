@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}وظایف من - پنل تکنسین{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/technician.css' %}">
+    <style>
+        .tasks-tabs { display: flex; gap: 0; background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .tasks-tab { flex: 1; text-align: center; padding: 14px; text-decoration: none; color: var(--secondary); font-weight: 600; font-size: 14px; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tasks-tab:hover { background: var(--light); }
+        .tasks-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+        .tasks-tab .tab-count { background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 6px; }
+        .tasks-tab.active .tab-count { background: var(--primary-light); }
+        .task-row { background: var(--white); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--border); transition: transform 0.2s; }
+        .task-row:hover { transform: translateX(-4px); }
+        .task-row.priority-urgent { border-right-color: #DC3545; }
+        .task-row.priority-important { border-right-color: #FFC107; }
+        .task-row.priority-normal { border-right-color: #6C757D; }
+        .task-info { flex: 1; }
+        .task-info h4 { font-size: 15px; color: var(--dark); margin-bottom: 6px; }
+        .task-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--secondary); }
+        .task-actions { display: flex; gap: 8px; align-items: center; }
+        .search-filter-bar { background: var(--white); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .search-filter-bar form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .search-filter-bar .form-input { font-size: 13px; }
+        @media (max-width: 768px) { .task-row { flex-direction: column; gap: 12px; align-items: flex-start; } .search-filter-bar form { flex-direction: column; } }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>📋 وظایف من</h1>
+        <a href="{% url 'technicians:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="search-filter-bar">
+        <form method="get">
+            <input type="hidden" name="tab" value="{{ current_tab }}">
+            <input type="text" name="q" value="{{ search }}" class="form-input" style="flex:1;min-width:200px;" placeholder="جستجو (شماره، عنوان، مکان...)">
+            <select name="priority" class="form-input" style="width:140px;">
+                <option value="">همه اولویت‌ها</option>
+                <option value="normal" {% if current_priority == 'normal' %}selected{% endif %}>عادی</option>
+                <option value="important" {% if current_priority == 'important' %}selected{% endif %}>مهم</option>
+                <option value="urgent" {% if current_priority == 'urgent' %}selected{% endif %}>اضطراری</option>
+            </select>
+            <select name="category" class="form-input" style="width:160px;">
+                <option value="">همه دسته‌بندی‌ها</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </form>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tasks-tabs">
+        <a href="?tab=current&q={{ search }}&priority={{ current_priority }}&category={{ current_category }}" class="tasks-tab {% if current_tab == 'current' %}active{% endif %}">
+            کارهای جاری <span class="tab-count">{{ current_count }}</span>
+        </a>
+        <a href="?tab=today&q={{ search }}&priority={{ current_priority }}&category={{ current_category }}" class="tasks-tab {% if current_tab == 'today' %}active{% endif %}">
+            امروز <span class="tab-count">{{ today_count }}</span>
+        </a>
+        <a href="?tab=archived&q={{ search }}&priority={{ current_priority }}&category={{ current_category }}" class="tasks-tab {% if current_tab == 'archived' %}active{% endif %}">
+            آرشیو / انجام‌شده <span class="tab-count">{{ archived_count }}</span>
+        </a>
+    </div>
+
+    <!-- Tasks List -->
+    {% for task in tasks %}
+        <div class="task-row priority-{{ task.priority }}">
+            <div class="task-info">
+                <h4>
+                    <span style="color:var(--primary);font-weight:700;">#{{ task.id }}</span> — {{ task.title }}
+                </h4>
+                <div class="task-meta">
+                    <span>📍 {{ task.location }}</span>
+                    <span>🔧 {{ task.category }}</span>
+                    <span>📅 {{ task.created_at|timesince }} پیش</span>
+                    <span class="status-badge status-{{ task.status }}">{{ task.get_status_display }}</span>
+                    <span class="priority-badge priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                    {% if task.rating %}
+                        <span>⭐ {{ task.rating }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="task-actions">
+                <a href="{% url 'technicians:task_detail' task.id %}" class="btn btn-primary" style="padding:8px 20px;font-size:13px;">مشاهده و مدیریت</a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align:center;padding:60px;color:var(--secondary);">
+            <div style="font-size:48px;margin-bottom:12px;">📭</div>
+            <p>تسکی یافت نشد</p>
+        </div>
+    {% endfor %}
+
+    {% include "includes/pagination.html" %}
+{% endblock %}

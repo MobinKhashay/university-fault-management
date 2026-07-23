@@ -5,11 +5,12 @@ from accounts.models import User
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['email', 'phone', 'profile_image']
+        fields = ['email', 'phone', 'profile_image', 'id_card_image']
         widgets = {
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'phone': forms.TextInput(attrs={'class': 'form-input'}),
             'profile_image': forms.FileInput(attrs={'class': 'form-input'}),
+            'id_card_image': forms.FileInput(attrs={'class': 'form-input'}),
         }
 
 class ChangePasswordForm(forms.Form):

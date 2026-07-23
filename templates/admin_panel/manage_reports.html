@@ -4,60 +4,51 @@
 {% block title %}مدیریت گزارش‌ها - پنل مدیر{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>مدیریت گزارش‌ها</h1>
-    <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
-</div>
-
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
-        {{ message }}
-        <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+    <div class="page-header">
+        <h1>مدیریت گزارش‌ها</h1>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
     </div>
-    {% endfor %}
-</div>
-{% endif %}
 
-<!-- Search & Filters -->
-<div class="filter-bar">
-    <form method="get" class="filter-form">
-        <input type="text" name="q" value="{{ search }}" class="form-input search-input" placeholder="جستجو (شماره تیکت، نام دانشجو، نام تکنسین...)">
 
-        <select name="status" class="form-input filter-select">
-            <option value="">همه وضعیت‌ها</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
 
-        <select name="faculty" class="form-input filter-select">
-            <option value="">همه دانشکده‌ها</option>
-            {% for fac in faculties %}
-            <option value="{{ fac.id }}" {% if current_faculty == fac.id|stringformat:"d" %}selected{% endif %}>{{ fac.name }}</option>
-            {% endfor %}
-        </select>
+    <!-- Search & Filters -->
+    <div class="filter-bar">
+        <form method="get" class="filter-form">
+            <input type="text" name="q" value="{{ search }}" class="form-input search-input" placeholder="جستجو (شماره تیکت، نام دانشجو، نام تکنسین...)">
 
-        <select name="category" class="form-input filter-select">
-            <option value="">همه دسته‌بندی‌ها</option>
-            {% for cat in categories %}
-            <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
-            {% endfor %}
-        </select>
+            <select name="status" class="form-input filter-select">
+                <option value="">همه وضعیت‌ها</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
 
-        <button type="submit" class="btn btn-primary">فیلتر</button>
-    </form>
-</div>
+            <select name="faculty" class="form-input filter-select">
+                <option value="">همه دانشکده‌ها</option>
+                {% for fac in faculties %}
+                    <option value="{{ fac.id }}" {% if current_faculty == fac.id|stringformat:"d" %}selected{% endif %}>{{ fac.name }}</option>
+                {% endfor %}
+            </select>
 
-<!-- Reports Table -->
-<div class="section-card">
-    <table class="data-table">
-        <thead>
+            <select name="category" class="form-input filter-select">
+                <option value="">همه دسته‌بندی‌ها</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </form>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="section-card">
+        <table class="data-table">
+            <thead>
             <tr>
                 <th>شماره</th>
                 <th>عنوان</th>
@@ -68,124 +59,128 @@
                 <th>مدت باز</th>
                 <th>عملیات</th>
             </tr>
-        </thead>
-        <tbody>
+            </thead>
+            <tbody>
             {% for report in reports %}
-            <tr>
-                <td>#{{ report.id }}</td>
-                <td>{{ report.title|truncatechars:30 }}</td>
-                <td>{{ report.location.building.faculty.name|default:"—" }}</td>
-                <td>{{ report.technician.user.full_name|default:"ارجاع نشده" }}</td>
-                <td>
+                <tr>
+                    <td>#{{ report.id }}</td>
+                    <td>{{ report.title|truncatechars:30 }}</td>
+                    <td>{{ report.location.building.faculty.name|default:"—" }}</td>
+                    <td>{{ report.technician.user.full_name|default:"ارجاع نشده" }}</td>
+                    <td>
                     <span class="priority-badge priority-{{ report.priority }}">
                         {{ report.get_priority_display }}
                     </span>
-                </td>
-                <td>
+                    </td>
+                    <td>
                     <span class="status-badge status-{{ report.status }}">
                         {{ report.get_status_display }}
                     </span>
-                </td>
-                <td class="duration-cell">{{ report.duration_open|timesince }}</td>
-                <td>
-                    <div class="action-menu">
-                        <button class="btn-sm btn-action" onclick="toggleMenu(this)">⋮</button>
-                        <div class="action-dropdown">
-                            <button onclick="showDetail({{ report.id }})">مشاهده جزئیات</button>
-                            <button onclick="showChangeTech({{ report.id }})">تغییر تکنسین</button>
-                            <button onclick="showChangePriority({{ report.id }})">تغییر اولویت</button>
-                            <button onclick="showCancelReport({{ report.id }})" class="text-danger">لغو گزارش</button>
+                    </td>
+                    <td class="duration-cell">{{ report.created_at|timesince }} پیش</td>
+                    <td>
+                        <div class="action-menu">
+                            <button class="btn-sm btn-action" onclick="toggleMenu(this)">⋮</button>
+                            <div class="action-dropdown">
+                                <button onclick="showDetail({{ report.id }})">مشاهده جزئیات</button>
+                                <button onclick="showChangeTech({{ report.id }})">تغییر تکنسین</button>
+                                <button onclick="showChangePriority({{ report.id }})">تغییر اولویت</button>
+                                <button onclick="showCancelReport({{ report.id }})" class="text-danger">لغو گزارش</button>
+                            </div>
                         </div>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" class="empty-state">هیچ گزارشی یافت نشد</td>
-            </tr>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="empty-state">هیچ گزارشی یافت نشد</td>
+                </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<!-- Detail Modal -->
-<div class="modal-overlay" id="detail-modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="modal-title">جزئیات گزارش</h2>
-            <button class="modal-close" onclick="closeModal('detail-modal')">&times;</button>
-        </div>
-        <div class="modal-body" id="detail-body">در حال بارگذاری...</div>
+            </tbody>
+        </table>
     </div>
-</div>
 
-<!-- Change Technician Modal -->
-<div class="modal-overlay" id="tech-modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>تغییر تکنسین</h2>
-            <button class="modal-close" onclick="closeModal('tech-modal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form method="post" id="change-tech-form">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label>تکنسین جدید:</label>
-                    <select name="technician_id" class="form-input" required>
-                        <option value="">انتخاب کنید</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">تایید تغییر</button>
-            </form>
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detail-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">جزئیات گزارش</h2>
+                <button class="modal-close" onclick="closeModal('detail-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="detail-body">در حال بارگذاری...</div>
         </div>
     </div>
-</div>
 
-<!-- Cancel Report Modal -->
-<div class="modal-overlay" id="cancel-modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>لغو گزارش</h2>
-            <button class="modal-close" onclick="closeModal('cancel-modal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form method="post" id="cancel-form">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label>دلیل لغو:</label>
-                    <textarea name="reason" class="form-input" rows="3" placeholder="دلیل لغو گزارش را بنویسید..." required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block" style="background:var(--danger);">تایید لغو</button>
-            </form>
+    <!-- Change Technician Modal -->
+    <div class="modal-overlay" id="tech-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>تغییر تکنسین</h2>
+                <button class="modal-close" onclick="closeModal('tech-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="change-tech-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>تکنسین جدید:</label>
+                        <select name="technician_id" class="form-input" required>
+                            <option value="">انتخاب کنید</option>
+                            {% for tech in technicians_list %}
+                                <option value="{{ tech.id }}">{{ tech.name }} ({{ tech.specialty }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">تایید تغییر</button>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Change Priority Modal -->
-<div class="modal-overlay" id="priority-modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>تغییر اولویت</h2>
-            <button class="modal-close" onclick="closeModal('priority-modal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form method="post" id="priority-form">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label>اولویت جدید:</label>
-                    <select name="priority" class="form-input" required>
-                        <option value="normal">عادی</option>
-                        <option value="important">مهم</option>
-                        <option value="urgent">اضطراری</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">تایید تغییر</button>
-            </form>
+    <!-- Cancel Report Modal -->
+    <div class="modal-overlay" id="cancel-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>لغو گزارش</h2>
+                <button class="modal-close" onclick="closeModal('cancel-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="cancel-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>دلیل لغو:</label>
+                        <textarea name="reason" class="form-input" rows="3" placeholder="دلیل لغو گزارش را بنویسید..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block" style="background:var(--danger);">تایید لغو</button>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Change Priority Modal -->
+    <div class="modal-overlay" id="priority-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>تغییر اولویت</h2>
+                <button class="modal-close" onclick="closeModal('priority-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="priority-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>اولویت جدید:</label>
+                        <select name="priority" class="form-input" required>
+                            <option value="normal">عادی</option>
+                            <option value="important">مهم</option>
+                            <option value="urgent">اضطراری</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">تایید تغییر</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% include "includes/pagination.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/admin_reports.js' %}"></script>
+    <script src="{% static 'js/admin_reports.js' %}"></script>
 {% endblock %}

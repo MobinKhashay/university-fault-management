@@ -4,43 +4,45 @@
 {% block title %}گزارش‌های من - سامانه خرابی دانشگاه{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>گزارش‌های من</h1>
-    <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">+ ثبت خرابی جدید</a>
-</div>
+    <div class="page-header">
+        <h1>گزارش‌های من</h1>
+        <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">+ ثبت خرابی جدید</a>
+    </div>
 
-<!-- Filters -->
-<div class="filter-bar">
-    <form method="get" class="filter-form">
-        <select name="status" class="form-input filter-select">
-            <option value="">همه وضعیت‌ها</option>
-            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>در صف انتظار</option>
-            <option value="assigned" {% if current_status == 'assigned' %}selected{% endif %}>ارجاع شده</option>
-            <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>در حال تعمیر</option>
-            <option value="suspended" {% if current_status == 'suspended' %}selected{% endif %}>معلق</option>
-            <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>حل شده</option>
-            <option value="closed" {% if current_status == 'closed' %}selected{% endif %}>بسته شده</option>
-        </select>
+    <!-- Filters -->
+    <div class="filter-bar">
+        <form method="get" class="filter-form">
+            <input type="text" name="q" value="{{ search }}" class="form-input search-input" placeholder="جستجو (شماره، عنوان...)">
 
-        <select name="category" class="form-input filter-select">
-            <option value="">همه دسته‌بندی‌ها</option>
-            {% for cat in categories %}
-            <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
-            {% endfor %}
-        </select>
+            <select name="status" class="form-input filter-select">
+                <option value="">همه وضعیت‌ها</option>
+                <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>در صف انتظار</option>
+                <option value="assigned" {% if current_status == 'assigned' %}selected{% endif %}>ارجاع شده</option>
+                <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>در حال تعمیر</option>
+                <option value="suspended" {% if current_status == 'suspended' %}selected{% endif %}>معلق</option>
+                <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>حل شده</option>
+                <option value="closed" {% if current_status == 'closed' %}selected{% endif %}>بسته شده</option>
+            </select>
 
-        <button type="submit" class="btn btn-primary">فیلتر</button>
-    </form>
-</div>
+            <select name="category" class="form-input filter-select">
+                <option value="">همه دسته‌بندی‌ها</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if current_category == cat.id|stringformat:"d" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
 
-<!-- Reports Table (Desktop) -->
-<div class="section-card desktop-table">
-    <table class="data-table">
-        <thead>
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </form>
+    </div>
+
+    <!-- Reports Table (Desktop) -->
+    <div class="section-card desktop-table">
+        <table class="data-table">
+            <thead>
             <tr>
                 <th>شماره</th>
                 <th>عنوان</th>
@@ -49,44 +51,44 @@
                 <th>وضعیت</th>
                 <th>اولویت</th>
             </tr>
-        </thead>
-        <tbody>
+            </thead>
+            <tbody>
             {% for report in reports %}
-            <tr>
-                <td>#{{ report.id }}</td>
-                <td>{{ report.title|truncatechars:35 }}</td>
-                <td>{{ report.location.building.faculty.name|default:"—" }}</td>
-                <td>{{ report.created_at|timesince }} پیش</td>
-                <td><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></td>
-                <td><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="empty-state">هیچ گزارشی یافت نشد</td></tr>
+                <tr>
+                    <td>#{{ report.id }}</td>
+                    <td><a href="{% url 'reports:report_detail' report.id %}">{{ report.title|truncatechars:35 }}</a></td>                <td>{{ report.location.building.faculty.name|default:"—" }}</td>
+                    <td>{{ report.created_at|timesince }} پیش</td>
+                    <td><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></td>
+                    <td><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-state">هیچ گزارشی یافت نشد</td></tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
 
-<!-- Reports Cards (Mobile — Table-to-Card) -->
-<div class="mobile-cards">
-    {% for report in reports %}
-    <div class="report-card">
-        <div class="report-card-header">
-            <span class="task-id">#{{ report.id }}</span>
-            <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
-        </div>
-        <h4>{{ report.title }}</h4>
-        <div class="report-card-info">
-            <span>📍 {{ report.location.building.faculty.name|default:"—" }}</span>
-            <span>🕐 {{ report.created_at|timesince }} پیش</span>
-            <span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span>
-        </div>
+    <!-- Reports Cards (Mobile — Table-to-Card) -->
+    <div class="mobile-cards">
+        {% for report in reports %}
+            <div class="report-card">
+                <div class="report-card-header">
+                    <span class="task-id">#{{ report.id }}</span>
+                    <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+                </div>
+                <h4>{{ report.title }}</h4>
+                <div class="report-card-info">
+                    <span>📍 {{ report.location.building.faculty.name|default:"—" }}</span>
+                    <span>🕐 {{ report.created_at|timesince }} پیش</span>
+                    <span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state-graphic">
+                <div class="empty-icon">📭</div>
+                <p>هیچ گزارشی یافت نشد</p>
+            </div>
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="empty-state-graphic">
-        <div class="empty-icon">📭</div>
-        <p>هیچ گزارشی یافت نشد</p>
-    </div>
-    {% endfor %}
-</div>
+    {% include "includes/pagination.html" %}
 {% endblock %}

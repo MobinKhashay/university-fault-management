@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}افزودن سوال{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>➕ افزودن سوال جدید</h1>
+    <a href="{% url 'faq:manage' %}" class="btn btn-outline-secondary">بازگشت</a>
+</div>
+
+<div class="section-card">
+    <form method="post" class="auth-form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>سوال *</label>
+            <input type="text" name="question" class="form-input" placeholder="سوال را بنویسید..." required>
+        </div>
+        <div class="form-group">
+            <label>پاسخ *</label>
+            <textarea name="answer" class="form-input" rows="4" placeholder="پاسخ را بنویسید..." required></textarea>
+        </div>
+        <div class="form-group">
+            <label>دسته‌بندی</label>
+            <select name="category" class="form-input">
+                {% for val, label in categories %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">ذخیره</button>
+    </form>
+</div>
+{% endblock %}

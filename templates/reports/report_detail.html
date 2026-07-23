@@ -1,45 +1,92 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}گزارش #{{ report.id }} - سامانه خرابی دانشگاه{% endblock %}
+{% block title %}گزارش #{{ report.id }}{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/reports.css' %}">{% endblock %}
 
 {% block content %}
-<div class="page-header"><h1>گزارش #{{ report.id }} — {{ report.title }}</h1><a href="{% url 'reports:my_reports' %}" class="btn btn-outline-secondary">بازگشت</a></div>
+    <div class="page-header">
+        <h1>گزارش #{{ report.id }} — {{ report.title }}</h1>
+        <a href="{% url 'reports:my_reports' %}" class="btn btn-outline-secondary">بازگشت</a>
+    </div>
 
-{% if messages %}<div class="messages">{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}</div>{% endif %}
 
-<div class="section-card">
-    <h3>اطلاعات گزارش</h3>
-    <div class="detail-row"><span class="detail-label">مکان:</span><span>{{ report.location }}</span></div>
-    <div class="detail-row"><span class="detail-label">دسته‌بندی:</span><span>{{ report.category }}</span></div>
-    <div class="detail-row"><span class="detail-label">اولویت:</span><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></div>
-    <div class="detail-row"><span class="detail-label">وضعیت:</span><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></div>
-    <div class="detail-row"><span class="detail-label">تکنسین:</span><span>{{ report.technician.user.full_name|default:"ارجاع نشده" }}</span></div>
-    {% if report.eta_hours %}<div class="detail-row"><span class="detail-label">ETA:</span><span>{{ report.eta_hours }} ساعت</span></div>{% endif %}
-    <div class="detail-row"><span class="detail-label">توضیحات:</span><span>{{ report.description }}</span></div>
-</div>
+    <!-- Report Info -->
+    <div class="section-card">
+        <h3>📋 اطلاعات گزارش</h3>
+        <div class="detail-row"><span class="detail-label">مکان:</span><span>{{ report.location }}</span></div>
+        <div class="detail-row"><span class="detail-label">دسته‌بندی:</span><span>{{ report.category }}</span></div>
+        <div class="detail-row"><span class="detail-label">اولویت:</span><span class="priority-badge priority-{{ report.priority }}">{{ report.get_priority_display }}</span></div>
+        <div class="detail-row"><span class="detail-label">وضعیت:</span><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></div>
+        <div class="detail-row"><span class="detail-label">تکنسین:</span><span>{{ report.technician.user.full_name|default:"ارجاع نشده" }}</span></div>
+        <div class="detail-row"><span class="detail-label">توضیحات:</span><span>{{ report.description }}</span></div>
+        {% if report.suspension_reason %}
+            <div class="detail-row"><span class="detail-label">دلیل تعلیق:</span><span style="color:var(--danger)">{{ report.suspension_reason }}</span></div>
+        {% endif %}
+    </div>
 
-{% if media %}<div class="section-card"><h3>📷 تصاویر قبل از تعمیر</h3><div class="image-preview">{% for m in media %}<img src="{{ m.file_path.url }}" alt="before">{% endfor %}</div></div>{% endif %}
-{% if after_media %}<div class="section-card"><h3>📷 تصاویر بعد از تعمیر</h3><div class="image-preview">{% for m in after_media %}<img src="{{ m.file_path.url }}" alt="after">{% endfor %}</div></div>{% endif %}
+    <!-- Messages -->
+    <div class="section-card">
+        <h3>💬 پیام‌ها</h3>
 
-<!-- Rating US-08 -->
-{% if report.status == 'resolved' and not report.rating %}
-<div class="section-card">
-    <h3>⭐ امتیازدهی</h3>
-    <form method="post" action="{% url 'reports:rate_report' report.id %}">
-        {% csrf_token %}
-        <div class="star-rating">
-            {% for i in "12345" %}<button type="submit" name="rating" value="{{ i }}" class="star-btn">{% if forloop.counter <= report.rating|default:0 %}★{% else %}☆{% endif %}</button>{% endfor %}
+        {% if ticket_messages %}
+            <div class="messages-list">
+                {% for msg in ticket_messages %}
+                    <div class="message-item {% if msg.sender == request.user %}message-mine{% else %}message-other{% endif %}">
+                        <div class="message-header">
+                            <strong>{% if msg.sender == request.user %}شما{% else %}{{ msg.sender.full_name }} (تکنسین){% endif %}</strong>
+                            <small>{{ msg.created_at|timesince }} پیش</small>
+                        </div>
+                        <p>{{ msg.message }}</p>
+                        {% if msg.attachment %}
+                            <div style="margin-top:8px;">
+                                <a href="{{ msg.attachment.url }}" target="_blank" style="color:var(--primary);">📎 مشاهده پیوست</a>
+                                <br>
+                                <img src="{{ msg.attachment.url }}" alt="پیوست" style="max-width:300px;border-radius:8px;margin-top:4px;" onerror="this.style.display='none'">
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color:var(--secondary);text-align:center;padding:20px;">هنوز پیامی ارسال نشده</p>
+        {% endif %}
+
+        {% if report.status != 'closed' and report.status != 'cancelled' and report.status != 'archived' and report.status != 'resolved' %}
+            <form method="post" action="{% url 'reports:send_message' report.id %}" enctype="multipart/form-data" style="margin-top:16px;">
+                {% csrf_token %}
+                <div class="form-group">
+                    <textarea name="message" class="form-input" rows="3" placeholder="پیام خود را بنویسید..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>پیوست (اختیاری):</label>
+                    <input type="file" name="attachment" class="form-input" accept="image/*,.pdf">
+                </div>
+                <button type="submit" class="btn btn-primary">ارسال پیام</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <!-- Rating -->
+    {% if report.status == 'resolved' and not report.rating %}
+        <div class="section-card">
+            <h3>⭐ امتیازدهی</h3>
+            <p>از کیفیت تعمیر راضی بودید؟</p>
+            <form method="post" action="{% url 'reports:rate_report' report.id %}" style="display:flex;gap:8px;margin-top:12px;">
+                {% csrf_token %}
+                <button type="submit" name="rating" value="1" class="btn btn-outline-secondary">1 ⭐</button>
+                <button type="submit" name="rating" value="2" class="btn btn-outline-secondary">2 ⭐</button>
+                <button type="submit" name="rating" value="3" class="btn btn-outline-secondary">3 ⭐</button>
+                <button type="submit" name="rating" value="4" class="btn btn-outline-secondary">4 ⭐</button>
+                <button type="submit" name="rating" value="5" class="btn btn-primary">5 ⭐</button>
+            </form>
         </div>
-    </form>
-</div>
-{% elif report.rating %}
-<div class="section-card"><h3>امتیاز شما: {{ report.rating }} ⭐</h3></div>
-{% endif %}
+    {% elif report.rating %}
+        <div class="section-card"><h3>امتیاز شما: {{ report.rating }} ⭐</h3></div>
+    {% endif %}
 
-<!-- Timeline -->
-<div class="section-card">
-    <h3>📅 خط زمانی</h3>
-    <ul class="timeline">{% for log in logs %}<li class="timeline-item"><span class="timeline-time">{{ log.created_at|date:"Y/m/d H:i" }}</span><span><strong>{{ log.get_action_display }}</strong>{% if log.description %}: {{ log.description }}{% endif %}</span></li>{% endfor %}</ul>
-</div>
+    <!-- Timeline -->
+    <div class="section-card">
+        <h3>📅 خط زمانی</h3>
+        <ul class="timeline">{% for log in logs %}<li class="timeline-item"><span class="timeline-time">{{ log.created_at|date:"Y/m/d H:i" }}</span><span><strong>{{ log.get_action_display }}</strong>{% if log.description %}: {{ log.description }}{% endif %}</span></li>{% endfor %}</ul>
+    </div>
 {% endblock %}

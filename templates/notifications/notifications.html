@@ -4,64 +4,65 @@
 {% block title %}اعلان‌ها - سامانه خرابی دانشگاه{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+    <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🔔 اعلان‌ها {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}</h1>
-    <button class="btn btn-outline-secondary" id="mark-all-btn" onclick="markAllRead()">
-        علامت‌زدن همه به عنوان خوانده‌شده
-    </button>
-</div>
-
-<!-- Filter Tabs -->
-<div class="notif-tabs">
-    <a href="?tab=all" class="notif-tab {% if current_tab == 'all' %}active{% endif %}">همه</a>
-    <a href="?tab=unread" class="notif-tab {% if current_tab == 'unread' %}active{% endif %}">خوانده نشده {% if unread_count %}({{ unread_count }}){% endif %}</a>
-    <a href="?tab=read" class="notif-tab {% if current_tab == 'read' %}active{% endif %}">خوانده شده</a>
-</div>
-
-{% csrf_token %}
-
-<!-- Notifications List -->
-<div class="notif-list" id="notif-list">
-    {% for notif in notifications %}
-    <div class="notif-item {% if not notif.is_read %}notif-unread{% endif %}" id="notif-{{ notif.id }}" data-id="{{ notif.id }}">
-        <div class="notif-content">
-            <div class="notif-icon">
-                {% if notif.type == 'status_change' %}🔄
-                {% elif notif.type == 'technician_assigned' %}👷
-                {% elif notif.type == 'new_message' %}💬
-                {% elif notif.type == 'resolved' %}✅
-                {% elif notif.type == 'part_approved' %}✔️
-                {% elif notif.type == 'part_rejected' %}❌
-                {% elif notif.type == 'rating_reminder' %}⭐
-                {% else %}🔔{% endif %}
-            </div>
-            <div class="notif-text">
-                <p class="notif-message">{{ notif.message }}</p>
-                <span class="notif-time">{{ notif.created_at|timesince }} پیش</span>
-            </div>
-        </div>
-        <div class="notif-actions">
-            {% if notif.report %}
-            <a href="{% url 'reports:my_reports' %}" class="notif-link">مشاهده گزارش</a>
-            {% endif %}
-            {% if not notif.is_read %}
-            <button class="btn-mark-read" onclick="markRead({{ notif.id }})">خوانده شد</button>
-            {% endif %}
-        </div>
+    <div class="page-header">
+        <h1>🔔 اعلان‌ها {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}</h1>
+        <button class="btn btn-outline-secondary" id="mark-all-btn" onclick="markAllRead()">
+            علامت‌زدن همه به عنوان خوانده‌شده
+        </button>
     </div>
-    {% empty %}
-    <div class="empty-state">
-        <div class="empty-icon">🔕</div>
-        <p>اعلان جدیدی وجود ندارد</p>
+
+    <!-- Filter Tabs -->
+    <div class="notif-tabs">
+        <a href="?tab=all" class="notif-tab {% if current_tab == 'all' %}active{% endif %}">همه</a>
+        <a href="?tab=unread" class="notif-tab {% if current_tab == 'unread' %}active{% endif %}">خوانده نشده {% if unread_count %}({{ unread_count }}){% endif %}</a>
+        <a href="?tab=read" class="notif-tab {% if current_tab == 'read' %}active{% endif %}">خوانده شده</a>
     </div>
-    {% endfor %}
-</div>
+
+    {% csrf_token %}
+
+    <!-- Notifications List -->
+    <div class="notif-list" id="notif-list">
+        {% for notif in notifications %}
+            <div class="notif-item {% if not notif.is_read %}notif-unread{% endif %}" id="notif-{{ notif.id }}" data-id="{{ notif.id }}">
+                <div class="notif-content">
+                    <div class="notif-icon">
+                        {% if notif.type == 'status_change' %}🔄
+                        {% elif notif.type == 'technician_assigned' %}👷
+                        {% elif notif.type == 'new_message' %}💬
+                        {% elif notif.type == 'resolved' %}✅
+                        {% elif notif.type == 'part_approved' %}✔️
+                        {% elif notif.type == 'part_rejected' %}❌
+                        {% elif notif.type == 'rating_reminder' %}⭐
+                        {% else %}🔔{% endif %}
+                    </div>
+                    <div class="notif-text">
+                        <p class="notif-message">{{ notif.message }}</p>
+                        <span class="notif-time">{{ notif.created_at|timesince }} پیش</span>
+                    </div>
+                </div>
+                <div class="notif-actions">
+                    {% if notif.report %}
+                        <a href="{% url 'reports:my_reports' %}" class="notif-link">مشاهده گزارش</a>
+                    {% endif %}
+                    {% if not notif.is_read %}
+                        <button class="btn-mark-read" onclick="markRead({{ notif.id }})">خوانده شد</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <div class="empty-icon">🔕</div>
+                <p>اعلان جدیدی وجود ندارد</p>
+            </div>
+        {% endfor %}
+    </div>
+    {% include "includes/pagination.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/notifications.js' %}"></script>
+    <script src="{% static 'js/notifications.js' %}"></script>
 {% endblock %}

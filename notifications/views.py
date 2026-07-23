@@ -13,10 +13,8 @@ from .models import Notification
 
 @login_required
 def notifications_view(request):
-    """
-    Notifications page with read/unread filter tabs.
-    US-09: اعلان‌ها با فیلتر خوانده/نخوانده
-    """
+    from django.core.paginator import Paginator
+
     tab = request.GET.get('tab', 'all')
     notifications = Notification.objects.filter(user=request.user)
 
@@ -27,10 +25,18 @@ def notifications_view(request):
 
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
 
+    paginator = Paginator(notifications, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    query_string = f'tab={tab}&' if tab != 'all' else ''
+
     context = {
-        'notifications': notifications[:50],
+        'notifications': page_obj,
+        'page_obj': page_obj,
         'current_tab': tab,
         'unread_count': unread_count,
+        'query_string': query_string,
     }
     return render(request, 'notifications/notifications.html', context)
 

@@ -38,7 +38,7 @@ class RegistrationForm(forms.ModelForm):
         model = User
         fields = [
             'first_name', 'last_name', 'role', 'student_id',
-            'email', 'phone', 'profile_image', 'id_card_image',
+            'email', 'phone', 'id_card_image',
         ]
         labels = {
             'first_name': 'نام',
@@ -47,7 +47,6 @@ class RegistrationForm(forms.ModelForm):
             'student_id': 'شماره شناسایی',
             'email': 'ایمیل',
             'phone': 'شماره تلفن',
-            'profile_image': 'تصویر پروفایل (اختیاری)',
             'id_card_image': 'تصویر کارت شناسایی',
         }
         widgets = {
@@ -55,6 +54,7 @@ class RegistrationForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'نام',
             }),
+
             'last_name': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'نام خانوادگی',
@@ -81,10 +81,6 @@ class RegistrationForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': '09xxxxxxxxx',
             }),
-            'profile_image': forms.FileInput(attrs={
-                'class': 'form-input',
-                'accept': 'image/*',
-            }),
             'id_card_image': forms.FileInput(attrs={
                 'class': 'form-input',
                 'accept': 'image/*',
@@ -92,12 +88,22 @@ class RegistrationForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].choices = [
+            ('', 'نقش خود را انتخاب کنید'),
+            ('student', 'دانشجو'),
+            ('professor', 'استاد'),
+            ('staff', 'کارمند'),
+        ]
+
     def clean_email(self):
-        """Validate email uniqueness."""
-        email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
-            raise ValidationError('این ایمیل قبلاً ثبت شده است.')
-        return email
+        def clean_email(self):
+            """Validate email uniqueness."""
+            email = self.cleaned_data.get('email')
+            if User.objects.filter(email=email).exists():
+                raise ValidationError('این ایمیل قبلاً ثبت شده است.')
+            return email
 
     def clean_student_id(self):
         """Validate student_id uniqueness."""

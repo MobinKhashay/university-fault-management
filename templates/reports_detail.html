@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-header"><h1>گزارش #{{ report.id }} — {{ report.title }}</h1><a href="{% url 'reports:my_reports' %}" class="btn btn-outline-secondary">بازگشت</a></div>
 
-{% if messages %}<div class="messages">{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}</div>{% endif %}
+
 
 <div class="section-card">
     <h3>اطلاعات گزارش</h3>

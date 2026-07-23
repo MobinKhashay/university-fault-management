@@ -17,16 +17,7 @@
             <p class="auth-subtitle">سامانه هوشمند گزارش و مدیریت خرابی‌های دانشگاه</p>
         </div>
 
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-                <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
+
 
         <form method="post" enctype="multipart/form-data" class="auth-form" id="register-form">
             {% csrf_token %}
@@ -101,10 +92,7 @@
                 {% endif %}
             </div>
 
-            <div class="form-group">
-                <label for="id_profile_image">تصویر پروفایل (اختیاری)</label>
-                {{ form.profile_image }}
-            </div>
+
 
             <div class="form-group" id="id-card-group">
                 <label for="id-card-input" id="id-card-label">تصویر کارت شناسایی <span class="required">*</span></label>

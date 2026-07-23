@@ -120,8 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.duplicates.length > 0) {
                     dupList.innerHTML = '';
                     data.duplicates.forEach(function(d) {
-                        dupList.innerHTML += '<li>گزارش #' + d.id + ' — ' + d.title + ' (' + d.created_at + ')</li>';
-                    });
+                        dupList.innerHTML += '<li><a href="javascript:void(0)" onclick="showReportPreview(' + d.id + ')" style="color:#1F4E79;font-weight:600;">گزارش #' + d.id + ' — ' + d.title + '</a> <span style="color:#999;">(' + d.created_at + ' | وضعیت: ' + d.status + ')</span></li>';                    });
                     warningDiv.style.display = 'block';
                 } else {
                     warningDiv.style.display = 'none';
@@ -178,20 +177,43 @@ document.addEventListener('DOMContentLoaded', function() {
     // === 6. Preview Modal ===
     if (previewBtn) {
         previewBtn.addEventListener('click', function() {
-            var title = document.querySelector('[name="title"]').value || '-';
-            var desc = descInput ? descInput.value : '-';
-            var faculty = facultySelect ? facultySelect.options[facultySelect.selectedIndex].text : '-';
-            var building = buildingSelect ? buildingSelect.options[buildingSelect.selectedIndex].text : '-';
-            var category = categorySelect ? categorySelect.options[categorySelect.selectedIndex].text : '-';
+            var title = document.querySelector('[name="title"]').value || '—';
+            var desc = descInput ? descInput.value : '—';
+            var faculty = facultySelect ? facultySelect.options[facultySelect.selectedIndex].text : '—';
+            var building = buildingSelect ? buildingSelect.options[buildingSelect.selectedIndex].text : '—';
+            var location = locationSelect && locationSelect.value ? locationSelect.options[locationSelect.selectedIndex].text : '';
+            var category = categorySelect ? categorySelect.options[categorySelect.selectedIndex].text : '—';
             var priority = document.getElementById('priority-select');
-            var priorityText = priority ? priority.options[priority.selectedIndex].text : '-';
+            var priorityText = priority ? priority.options[priority.selectedIndex].text : '—';
+            var priorityVal = priority ? priority.value : 'normal';
+
+            var locationText = faculty;
+            if (building && building !== '—') locationText += ' — ' + building;
+            if (location) locationText += ' — ' + location;
+
+            var priorityColor = '#6C757D';
+            if (priorityVal === 'important') priorityColor = '#FF9800';
+            if (priorityVal === 'urgent') priorityColor = '#DC3545';
+
+            var imageCount = imagesInput && imagesInput.files ? Math.min(imagesInput.files.length, 3) : 0;
+            var hasVideo = videoInput && videoInput.files && videoInput.files.length > 0;
 
             previewBody.innerHTML =
-                '<div class="preview-item"><div class="preview-label">عنوان:</div><div class="preview-value">' + title + '</div></div>' +
-                '<div class="preview-item"><div class="preview-label">مکان:</div><div class="preview-value">' + faculty + ' — ' + building + '</div></div>' +
-                '<div class="preview-item"><div class="preview-label">دسته‌بندی:</div><div class="preview-value">' + category + '</div></div>' +
-                '<div class="preview-item"><div class="preview-label">سطح فوریت:</div><div class="preview-value">' + priorityText + '</div></div>' +
-                '<div class="preview-item"><div class="preview-label">توضیحات:</div><div class="preview-value">' + desc + '</div></div>';
+                '<div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #E8F0FE;margin-bottom:16px;">' +
+                '<div style="font-size:42px;margin-bottom:8px;">📝</div>' +
+                '<h2 style="color:#1F4E79;margin:0 0 8px 0;font-size:20px;">پیش‌نمایش گزارش</h2>' +
+                '<span style="background:' + priorityColor + ';color:white;padding:4px 16px;border-radius:20px;font-size:13px;font-weight:600;">' + priorityText + '</span>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+                '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">عنوان خرابی</div><div style="font-size:14px;font-weight:600;color:#333;">' + title + '</div></div>' +
+                '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">دسته‌بندی</div><div style="font-size:14px;font-weight:600;color:#333;">' + category + '</div></div>' +
+                '</div>' +
+                '<div style="background:#F0F4FF;padding:12px;border-radius:10px;margin-bottom:12px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">📍 مکان</div><div style="font-size:14px;color:#333;">' + locationText + '</div></div>' +
+                '<div style="background:#FFFDE7;padding:14px;border-radius:10px;border:1px solid #FFF9C4;margin-bottom:12px;"><div style="font-size:11px;color:#999;margin-bottom:6px;">📝 توضیحات</div><div style="font-size:14px;color:#333;line-height:1.8;">' + desc + '</div></div>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+                '<div style="background:#F8F9FA;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:24px;margin-bottom:4px;">📷</div><div style="font-size:13px;color:#333;">' + (imageCount > 0 ? imageCount + ' تصویر' : 'بدون تصویر') + '</div></div>' +
+                '<div style="background:#F8F9FA;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:24px;margin-bottom:4px;">🎥</div><div style="font-size:13px;color:#333;">' + (hasVideo ? 'ویدیو پیوست' : 'بدون ویدیو') + '</div></div>' +
+                '</div>';
 
             previewModal.style.display = 'flex';
         });
@@ -208,4 +230,119 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === previewModal) previewModal.style.display = 'none';
         });
     }
+    // === 7. Auto-suggest priority based on description ===
+    var prioritySelect = document.getElementById('priority-select');
+    var hintEl = document.getElementById('priority-hint');
+
+    var urgentKeywords = ['آتش', 'حریق', 'سیل', 'برق‌گرفتگی', 'انفجار', 'گاز', 'نشت گاز', 'خطرناک', 'فوری', 'اورژانس', 'سقف ریزش', 'ریزش', 'شکستگی لوله اصلی'];
+    var importantKeywords = ['نشتی', 'خرابی کامل', 'از کار افتاده', 'کار نمیکنه', 'کار نمی‌کنه', 'قطع برق', 'قطع آب', 'سرما', 'گرما', 'یخ زده', 'بوی بد', 'شکسته', 'خراب شده', 'کولر خراب', 'شوفاژ خراب', 'پروژکتور خراب'];
+
+    if (descInput) {
+        descInput.addEventListener('input', function() {
+            var text = this.value.toLowerCase();
+            var suggested = 'normal';
+            var reason = '';
+
+            for (var i = 0; i < urgentKeywords.length; i++) {
+                if (text.indexOf(urgentKeywords[i]) !== -1) {
+                    suggested = 'urgent';
+                    reason = 'کلمه «' + urgentKeywords[i] + '» شناسایی شد';
+                    break;
+                }
+            }
+
+            if (suggested === 'normal') {
+                for (var j = 0; j < importantKeywords.length; j++) {
+                    if (text.indexOf(importantKeywords[j]) !== -1) {
+                        suggested = 'important';
+                        reason = 'کلمه «' + importantKeywords[j] + '» شناسایی شد';
+                        break;
+                    }
+                }
+            }
+
+            if (prioritySelect && hintEl) {
+                if (suggested === 'urgent') {
+                    prioritySelect.value = 'urgent';
+                    hintEl.innerHTML = '🔴 پیشنهاد سیستم: <strong>اضطراری</strong> — ' + reason;
+                    hintEl.style.color = '#DC3545';
+                } else if (suggested === 'important') {
+                    prioritySelect.value = 'important';
+                    hintEl.innerHTML = '🟡 پیشنهاد سیستم: <strong>مهم</strong> — ' + reason;
+                    hintEl.style.color = '#FF9800';
+                } else {
+                    hintEl.innerHTML = 'سیستم سطح فوریت را پیشنهاد می‌دهد';
+                    hintEl.style.color = 'var(--secondary)';
+                }
+            }
+        });
+    }
+    window.showReportPreview = function(reportId) {
+        var modal = document.getElementById('dup-modal');
+        var body = document.getElementById('dup-modal-body');
+        body.innerHTML = '<p style="text-align:center;padding:40px;color:#999;">⏳ در حال بارگذاری...</p>';
+        modal.style.display = 'flex';
+
+        fetch('/reports/ajax/report-preview/?report_id=' + reportId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    body.innerHTML = '<p style="color:red;text-align:center;padding:20px;">گزارش یافت نشد</p>';
+                    return;
+                }
+
+                var statusColor = '#17A2B8';
+                if (data.status.indexOf('تعمیر') > -1) statusColor = '#2E75B6';
+                if (data.status.indexOf('حل') > -1 || data.status.indexOf('بسته') > -1) statusColor = '#28A745';
+                if (data.status.indexOf('انتظار') > -1) statusColor = '#FF9800';
+                if (data.status.indexOf('معلق') > -1) statusColor = '#E65100';
+
+                body.innerHTML =
+                    '<div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #E8F0FE;margin-bottom:16px;">' +
+                    '<div style="font-size:42px;margin-bottom:8px;">📋</div>' +
+                    '<h2 style="color:#1F4E79;margin:0 0 8px 0;font-size:20px;">گزارش #' + data.id + '</h2>' +
+                    '<span style="background:' + statusColor + ';color:white;padding:4px 16px;border-radius:20px;font-size:13px;font-weight:600;">' + data.status + '</span>' +
+                    '</div>' +
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">عنوان</div>' +
+                    '<div style="font-size:14px;font-weight:600;color:#333;">' + data.title + '</div>' +
+                    '</div>' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">دسته‌بندی</div>' +
+                    '<div style="font-size:14px;font-weight:600;color:#333;">' + data.category + '</div>' +
+                    '</div>' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">اولویت</div>' +
+                    '<div style="font-size:14px;font-weight:600;color:#333;">' + data.priority + '</div>' +
+                    '</div>' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">تاریخ ثبت</div>' +
+                    '<div style="font-size:14px;font-weight:600;color:#333;">' + data.created_at + '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div style="background:#F0F4FF;padding:12px;border-radius:10px;margin-bottom:12px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">📍 مکان</div>' +
+                    '<div style="font-size:14px;color:#333;">' + data.location + '</div>' +
+                    '</div>' +
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">👤 گزارش‌دهنده</div>' +
+                    '<div style="font-size:14px;color:#333;">' + data.reporter + '</div>' +
+                    '</div>' +
+                    '<div style="background:#F8F9FA;padding:12px;border-radius:10px;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:4px;">🔧 تکنسین</div>' +
+                    '<div style="font-size:14px;color:#333;">' + data.technician + '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div style="background:#FFFDE7;padding:14px;border-radius:10px;border:1px solid #FFF9C4;">' +
+                    '<div style="font-size:11px;color:#999;margin-bottom:6px;">📝 توضیحات</div>' +
+                    '<div style="font-size:14px;color:#333;line-height:1.8;">' + data.description + '</div>' +
+                    '</div>';
+            });
+
+        modal.onclick = function(e) {
+            if (e.target === modal) modal.style.display = 'none';
+        };
+    };
 });

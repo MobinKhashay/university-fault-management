@@ -4,56 +4,79 @@
 {% block title %}داشبورد - سامانه خرابی دانشگاه{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+    <link rel="stylesheet" href="{% static 'css/reports.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>داشبورد گزارش‌دهنده</h1>
-    <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">+ ثبت خرابی جدید</a>
-</div>
-
-<div class="kpi-grid-4">
-    <div class="kpi-card kpi-blue"><div class="kpi-value">{{ total_reports }}</div><div class="kpi-label">کل گزارش‌ها</div></div>
-    <div class="kpi-card kpi-orange"><div class="kpi-value">{{ pending_reports }}</div><div class="kpi-label">در انتظار / ارجاع شده</div></div>
-    <div class="kpi-card kpi-blue-light"><div class="kpi-value">{{ in_progress_reports }}</div><div class="kpi-label">در حال تعمیر</div></div>
-    <div class="kpi-card kpi-green"><div class="kpi-value">{{ resolved_reports }}</div><div class="kpi-label">حل شده</div></div>
-</div>
-
-{% if unread_notifications > 0 %}
-<div class="notif-banner">
-    🔔 شما <strong>{{ unread_notifications }}</strong> اعلان خوانده نشده دارید.
-    <a href="{% url 'notifications:list' %}">مشاهده اعلان‌ها</a>
-</div>
-{% endif %}
-
-<div class="section-card">
-    <div class="section-header">
-        <h3>📋 ۵ گزارش اخیر</h3>
-        <a href="{% url 'reports:my_reports' %}" class="view-all-link">مشاهده همه →</a>
+    <div class="page-header">
+        <h1>داشبورد گزارش‌دهنده</h1>
+        <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">+ ثبت خرابی جدید</a>
     </div>
 
-    {% if recent_reports %}
-    <table class="data-table">
-        <thead><tr><th>شماره</th><th>عنوان</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-        <tbody>
-            {% for report in recent_reports %}
-            <tr>
-                <td>#{{ report.id }}</td>
-                <td>{{ report.title|truncatechars:40 }}</td>
-                <td><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></td>
-                <td>{{ report.created_at|timesince }} پیش</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state-graphic">
-        <div class="empty-icon">📭</div>
-        <h3>هنوز گزارشی ثبت نکرده‌اید</h3>
-        <p>با ثبت اولین گزارش خرابی، اینجا لیست گزارش‌هایتان نمایش داده می‌شود.</p>
-        <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">ثبت اولین گزارش</a>
+    <div class="kpi-grid-4">
+        <div class="kpi-card kpi-blue"><div class="kpi-value">{{ total_reports }}</div><div class="kpi-label">کل گزارش‌ها</div></div>
+        <div class="kpi-card kpi-orange"><div class="kpi-value">{{ pending_reports }}</div><div class="kpi-label">در انتظار / ارجاع شده</div></div>
+        <div class="kpi-card kpi-blue-light"><div class="kpi-value">{{ in_progress_reports }}</div><div class="kpi-label">در حال تعمیر</div></div>
+        <div class="kpi-card kpi-green"><div class="kpi-value">{{ resolved_reports }}</div><div class="kpi-label">حل شده</div></div>
     </div>
+
+    {% if unread_notifications > 0 %}
+        <div class="notif-banner">
+            🔔 شما <strong>{{ unread_notifications }}</strong> اعلان خوانده نشده دارید.
+            <a href="{% url 'notifications:list' %}">مشاهده اعلان‌ها</a>
+        </div>
     {% endif %}
-</div>
+
+    <div class="section-card">
+        <div class="section-header">
+            <h3>📋 ۵ گزارش اخیر</h3>
+            <a href="{% url 'reports:my_reports' %}" class="view-all-link">مشاهده همه →</a>
+        </div>
+
+        {% if recent_reports %}
+            <table class="data-table">
+                <thead><tr><th>شماره</th><th>عنوان</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                <tbody>
+                {% for report in recent_reports %}
+                    <tr>
+                        <td>#{{ report.id }}</td>
+                        <td>{{ report.title|truncatechars:40 }}</td>
+                        <td><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></td>
+                        <td>{{ report.created_at|timesince }} پیش</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state-graphic">
+                <div class="empty-icon">📭</div>
+                <h3>هنوز گزارشی ثبت نکرده‌اید</h3>
+                <p>با ثبت اولین گزارش خرابی، اینجا لیست گزارش‌هایتان نمایش داده می‌شود.</p>
+                <a href="{% url 'reports:submit_report' %}" class="btn btn-primary">ثبت اولین گزارش</a>
+            </div>
+        {% endif %}
+    </div>
+    {% block extra_js %}
+        <script>
+            // Auto-refresh KPIs every 60 seconds
+            setInterval(function() {
+                fetch('/reports/dashboard/?ajax=1')
+                    .then(function(r) { return r.text(); })
+                    .then(function(html) {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(html, 'text/html');
+                        var newKPIs = doc.querySelectorAll('.kpi-value');
+                        var oldKPIs = document.querySelectorAll('.kpi-value');
+                        newKPIs.forEach(function(el, i) {
+                            if (oldKPIs[i] && oldKPIs[i].textContent !== el.textContent) {
+                                oldKPIs[i].textContent = el.textContent;
+                                oldKPIs[i].style.transition = 'color 0.3s';
+                                oldKPIs[i].style.color = '#28A745';
+                                setTimeout(function() { oldKPIs[i].style.color = ''; }, 2000);
+                            }
+                        });
+                    });
+            }, 60000);
+        </script>
+    {% endblock %}
 {% endblock %}

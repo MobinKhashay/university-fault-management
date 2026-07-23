@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}مدیریت کاربران{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>👥 مدیریت کاربران</h1>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="kpi-grid" style="margin-bottom:20px;">
+        <div class="kpi-card kpi-blue"><div class="kpi-value">{{ total_users }}</div><div class="kpi-label">کل کاربران</div></div>
+        <div class="kpi-card kpi-green"><div class="kpi-value">{{ total_students }}</div><div class="kpi-label">دانشجو</div></div>
+        <div class="kpi-card kpi-orange"><div class="kpi-value">{{ total_professors }}</div><div class="kpi-label">استاد</div></div>
+        <div class="kpi-card kpi-purple"><div class="kpi-value">{{ total_staff }}</div><div class="kpi-label">کارمند</div></div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="filter-bar" style="margin-bottom:20px;">
+        <form method="get" class="filter-form">
+            <input type="text" name="q" value="{{ search }}" class="form-input" style="flex:1;min-width:200px;" placeholder="جستجو (نام، شماره، ایمیل...)">
+            <select name="role" class="form-input" style="width:140px;">
+                <option value="">همه نقش‌ها</option>
+                <option value="student" {% if current_role == 'student' %}selected{% endif %}>دانشجو</option>
+                <option value="professor" {% if current_role == 'professor' %}selected{% endif %}>استاد</option>
+                <option value="staff" {% if current_role == 'staff' %}selected{% endif %}>کارمند</option>
+                <option value="technician" {% if current_role == 'technician' %}selected{% endif %}>تکنسین</option>
+            </select>
+            <select name="status" class="form-input" style="width:160px;">
+                <option value="">همه وضعیت‌ها</option>
+                <option value="verified" {% if current_status == 'verified' %}selected{% endif %}>ایمیل تایید شده</option>
+                <option value="unverified" {% if current_status == 'unverified' %}selected{% endif %}>ایمیل تایید نشده</option>
+                <option value="id_verified" {% if current_status == 'id_verified' %}selected{% endif %}>هویت تایید شده</option>
+                <option value="id_not_verified" {% if current_status == 'id_not_verified' %}selected{% endif %}>هویت تایید نشده</option>
+            </select>
+            <button type="submit" class="btn btn-primary">فیلتر</button>
+        </form>
+    </div>
+
+    <!-- Users Table -->
+    <div class="section-card">
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>کاربر</th>
+                <th>شماره شناسایی</th>
+                <th>نقش</th>
+                <th>ایمیل</th>
+                <th>تایید ایمیل</th>
+                <th>تایید هویت</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+                <tr style="{% if not u.is_active %}opacity:0.5;{% endif %}">
+                    <td style="display:flex;align-items:center;gap:8px;">
+                        {% if u.profile_image %}
+                            <img src="{{ u.profile_image.url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                        {% else %}
+                            <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;">{{ u.first_name|first }}</div>
+                        {% endif %}
+                        {{ u.full_name }}
+                    </td>
+                    <td>{{ u.student_id }}</td>
+                    <td><span style="background:#E8F0FE;padding:3px 10px;border-radius:12px;font-size:12px;color:#1F4E79;">{{ u.get_role_display }}</span></td>
+                    <td style="font-size:12px;">{{ u.email }}</td>
+                    <td>{% if u.is_verified %}<span style="color:#28A745;">✅</span>{% else %}<span style="color:#DC3545;">❌</span>{% endif %}</td>
+                    <td>{% if u.is_id_verified %}<span style="color:#28A745;">✅</span>{% else %}<span style="color:#DC3545;">❌</span>{% endif %}</td>
+                    <td>{% if u.is_active %}<span style="color:#28A745;">فعال</span>{% else %}<span style="color:#DC3545;">غیرفعال</span>{% endif %}</td>
+                    <td>
+                        <button class="btn-sm" onclick="showUserDetail({{ u.id }})" style="margin-bottom:4px;">جزئیات</button>
+                        <form method="post" action="{% url 'admin_panel:toggle_user' u.id %}" style="display:inline;" onsubmit="return confirm('مطمئنید؟')">
+                            {% csrf_token %}
+                            {% if u.is_active %}
+                                <button class="btn-sm btn-danger">غیرفعال</button>
+                            {% else %}
+                                <button class="btn-sm btn-success">فعال‌سازی</button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="empty-state">کاربری یافت نشد</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include "includes/pagination.html" %}
+
+    <!-- User Detail Modal -->
+    <div class="modal-overlay" id="user-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>جزئیات کاربر</h2>
+                <button class="modal-close" onclick="document.getElementById('user-modal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body" id="user-modal-body">در حال بارگذاری...</div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        function showUserDetail(userId) {
+            var modal = document.getElementById('user-modal');
+            var body = document.getElementById('user-modal-body');
+            body.innerHTML = '<p style="text-align:center;padding:40px;color:#999;">⏳ در حال بارگذاری...</p>';
+            modal.style.display = 'flex';
+
+            fetch('/panel/users/' + userId + '/detail/')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var html = '';
+                    html += '<div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #E8F0FE;margin-bottom:16px;">';
+                    if (d.has_profile_image) {
+                        html += '<img src="' + d.profile_image_url + '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;border:3px solid var(--primary-light);">';
+                    } else {
+                        html += '<div style="width:64px;height:64px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto 8px;">'+d.full_name.charAt(0)+'</div>';
+                    }
+                    html += '<h3 style="color:#1F4E79;margin:0 0 4px;">' + d.full_name + '</h3>';
+                    html += '<span style="background:#E8F0FE;padding:4px 14px;border-radius:20px;font-size:13px;color:#1F4E79;">' + d.role + '</span>';
+                    html += '</div>';
+
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">شماره شناسایی</div><div style="font-size:14px;font-weight:600;">' + d.student_id + '</div></div>';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">ایمیل</div><div style="font-size:14px;">' + d.email + '</div></div>';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">تلفن</div><div style="font-size:14px;">' + d.phone + '</div></div>';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;"><div style="font-size:11px;color:#999;margin-bottom:4px;">تاریخ عضویت</div><div style="font-size:14px;">' + d.date_joined + '</div></div>';
+                    html += '</div>';
+
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
+                    html += '<div style="background:' + (d.is_verified ? '#D4EDDA' : '#F8D7DA') + ';padding:10px;border-radius:10px;text-align:center;font-size:13px;">' + (d.is_verified ? '✅ ایمیل تایید' : '❌ ایمیل تایید نشده') + '</div>';
+                    html += '<div style="background:' + (d.is_id_verified ? '#D4EDDA' : '#F8D7DA') + ';padding:10px;border-radius:10px;text-align:center;font-size:13px;">' + (d.is_id_verified ? '✅ هویت تایید' : '❌ هویت تایید نشده') + '</div>';
+                    html += '<div style="background:' + (d.is_active ? '#D4EDDA' : '#F8D7DA') + ';padding:10px;border-radius:10px;text-align:center;font-size:13px;">' + (d.is_active ? '✅ فعال' : '❌ غیرفعال') + '</div>';
+                    html += '</div>';
+
+                    if (d.has_id_card) {
+                        html += '<div style="text-align:center;"><a href="' + d.id_card_url + '" target="_blank" style="background:#E8F0FE;padding:8px 20px;border-radius:8px;text-decoration:none;color:#1F4E79;font-size:13px;">🪪 مشاهده کارت شناسایی</a></div>';
+                    }
+
+                    html += '<div style="background:#F0F4FF;padding:12px;border-radius:10px;margin-top:12px;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:4px;">تعداد گزارش‌ها</div><div style="font-size:20px;font-weight:700;color:var(--primary);">' + d.report_count + '</div></div>';
+
+                    body.innerHTML = html;
+                });
+
+            modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+        }
+    </script>
+{% endblock %}

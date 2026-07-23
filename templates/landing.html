@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه هوشمند گزارش و مدیریت خرابی‌ها — دانشگاه ارومیه</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Vazirmatn', 'Tahoma', sans-serif; background: linear-gradient(135deg, #0F2027, #203A43, #2C5364); min-height: 100vh; color: white; }
+
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }
+        .navbar-brand { font-size: 16px; font-weight: 700; color: white; text-decoration: none; }
+        .navbar-links { display: flex; gap: 12px; }
+        .navbar-links a { padding: 8px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; }
+        .btn-login { color: white; border: 1.5px solid rgba(255,255,255,0.4); }
+        .btn-login:hover { background: rgba(255,255,255,0.1); }
+        .btn-register { background: #2E75B6; color: white; border: none; }
+        .btn-register:hover { background: #3A8FD6; }
+
+        .hero { text-align: center; padding: 80px 20px 40px; }
+        .hero-icon { font-size: 80px; margin-bottom: 24px; }
+        .hero h1 { font-size: 36px; margin-bottom: 16px; line-height: 1.5; }
+        .hero p { font-size: 18px; color: rgba(255,255,255,0.7); max-width: 600px; margin: 0 auto 40px; line-height: 1.8; }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .hero-buttons a { padding: 14px 40px; border-radius: 12px; text-decoration: none; font-size: 16px; font-weight: 700; transition: all 0.3s; }
+        .btn-hero-primary { background: #2E75B6; color: white; box-shadow: 0 8px 30px rgba(46,117,182,0.4); }
+        .btn-hero-primary:hover { background: #3A8FD6; transform: translateY(-2px); }
+        .btn-hero-secondary { background: rgba(255,255,255,0.1); color: white; border: 1.5px solid rgba(255,255,255,0.3); }
+        .btn-hero-secondary:hover { background: rgba(255,255,255,0.2); }
+
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1000px; margin: 60px auto; padding: 0 20px; }
+        .feature-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border-radius: 16px; padding: 30px; text-align: center; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.3s; }
+        .feature-card:hover { transform: translateY(-6px); }
+        .feature-icon { font-size: 42px; margin-bottom: 16px; }
+        .feature-card h3 { font-size: 18px; margin-bottom: 10px; }
+        .feature-card p { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.7; }
+
+        .stats-bar { display: flex; justify-content: center; gap: 60px; padding: 40px 20px; flex-wrap: wrap; }
+        .stat-item { text-align: center; }
+        .stat-item .num { font-size: 36px; font-weight: 700; color: #FFD700; }
+        .stat-item .label { font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+        .footer { text-align: center; padding: 30px; color: rgba(255,255,255,0.4); font-size: 13px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 40px; }
+
+        @media (max-width: 768px) {
+            .features { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 24px; }
+            .hero p { font-size: 15px; }
+            .stats-bar { gap: 30px; }
+            .navbar { padding: 16px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="navbar-brand">🏛️ سامانه خرابی دانشگاه ارومیه</a>
+    <div class="navbar-links">
+        <a href="/faq/" class="btn-login">سوالات متداول</a>
+        <a href="/accounts/login/" class="btn-login">ورود</a>
+        <a href="/accounts/register/" class="btn-register">ثبت‌نام</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="hero-icon">🏗️</div>
+    <h1>سامانه هوشمند گزارش و مدیریت<br>خرابی‌های دانشگاه ارومیه</h1>
+    <p>خرابی دیدید؟ گزارش دهید! سیستم هوشمند ما بهترین تکنسین را پیدا و ارجاع می‌دهد. وضعیت تعمیر را لحظه‌به‌لحظه پیگیری کنید.</p>
+    <div class="hero-buttons">
+        <a href="/accounts/register/" class="btn-hero-primary">ثبت‌نام و شروع</a>
+        <a href="/accounts/login/" class="btn-hero-secondary">ورود به سامانه</a>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>ثبت آسان گزارش</h3>
+        <p>با چند کلیک خرابی را با عکس و توضیحات ثبت کنید. مکان را از لیست انتخاب کنید.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <h3>ارجاع هوشمند</h3>
+        <p>سیستم خودکار بر اساس تخصص، شیفت و بار کاری بهترین تکنسین را انتخاب می‌کند.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>پیگیری لحظه‌ای</h3>
+        <p>وضعیت گزارش را از ثبت تا تعمیر کامل پیگیری کنید و با تکنسین در ارتباط باشید.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">⭐</div>
+        <h3>امتیازدهی</h3>
+        <p>پس از تعمیر، کیفیت کار تکنسین را امتیاز دهید تا سطح خدمات بهبود یابد.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🔔</div>
+        <h3>اعلان‌های آنی</h3>
+        <p>در هر مرحله از اعلان‌های سیستم مطلع شوید. تغییر وضعیت، پیام جدید و...</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>امنیت بالا</h3>
+        <p>احراز هویت دو مرحله‌ای، قفل اکانت، محافظت CSRF و رمزنگاری اطلاعات.</p>
+    </div>
+</section>
+
+<section class="stats-bar">
+    <div class="stat-item">
+        <div class="num">۳</div>
+        <div class="label">نوع کاربر</div>
+    </div>
+    <div class="stat-item">
+        <div class="num">۲۳</div>
+        <div class="label">قابلیت سیستم</div>
+    </div>
+    <div class="stat-item">
+        <div class="num">۲۴/۷</div>
+        <div class="label">دسترسی آنلاین</div>
+    </div>
+    <div class="stat-item">
+        <div class="num">🤖</div>
+        <div class="label">ارجاع هوشمند</div>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>سامانه هوشمند گزارش و مدیریت خرابی‌ها — دانشگاه ارومیه</p>
+</footer>
+
+</body>
+</html>

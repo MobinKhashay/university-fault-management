@@ -16,6 +16,7 @@ from .forms import (
     PasswordResetRequestForm, PasswordResetCodeForm, PasswordResetNewForm,
 )
 from .models import User, EmailVerification, PasswordResetToken
+from notifications.models import Notification
 
 
 # ============================================================
@@ -319,7 +320,19 @@ def login_view(request):
                     request.session.set_expiry(30 * 24 * 3600)  # 30 days
                 else:
                     request.session.set_expiry(0)  # Browser close
-
+                # Auto cleanup old notifications
+                cutoff = timezone.now() - timezone.timedelta(days=30)
+                Notification.objects.filter(user=auth_user, is_read=True, created_at__lt=cutoff).delete()
+                # Auto-close stale resolved tickets
+                from reports.models import Report, RepairLog
+                cutoff_72h = timezone.now() - timezone.timedelta(hours=72)
+                stale = Report.objects.filter(status='resolved', rating__isnull=True, closed_at__lt=cutoff_72h)
+                for rpt in stale:
+                    rpt.status = 'closed'
+                    rpt.rating = 5
+                    rpt.save()
+                    RepairLog.objects.create(report=rpt, action='auto_closed',
+                                             description='بسته شدن خودکار — امتیاز ۵ ستاره')
                 messages.success(request, f'خوش آمدید، {auth_user.first_name}!')
                 return redirect('accounts:dashboard')
             else:
@@ -415,6 +428,28 @@ def password_reset_request_view(request):
         return redirect('accounts:dashboard')
 
     if request.method == 'POST':
+        # IP-based rate limiting
+        client_ip = get_client_ip(request)
+        ip_key = f'reset_attempts_{client_ip}'
+        ip_attempts = request.session.get(ip_key, 0)
+        ip_first_attempt = request.session.get(f'{ip_key}_time', None)
+
+        if ip_first_attempt:
+            from datetime import datetime
+            try:
+                first_time = datetime.fromisoformat(ip_first_attempt)
+                elapsed = (timezone.now() - timezone.make_aware(first_time) if timezone.is_naive(
+                    first_time) else timezone.now() - first_time).total_seconds()
+                if elapsed > 3600:
+                    ip_attempts = 0
+                    request.session[ip_key] = 0
+            except:
+                pass
+
+        if ip_attempts >= 3:
+            messages.error(request,
+                           '⛔ تعداد درخواست‌های بازیابی رمز از این آدرس IP بیش از حد مجاز است. لطفاً ۱ ساعت بعد تلاش کنید.')
+            return render(request, 'accounts/password_reset_request.html', {'form': PasswordResetRequestForm()})
         form = PasswordResetRequestForm(request.POST)
         if form.is_valid():
             identifier = form.cleaned_data['identifier']
@@ -445,6 +480,10 @@ def password_reset_request_view(request):
             PasswordResetToken.objects.create(
                 user=user, token=token, code=code,
             )
+            # Track IP attempts
+            request.session[ip_key] = ip_attempts + 1
+            if ip_attempts == 0:
+                request.session[f'{ip_key}_time'] = timezone.now().isoformat()
 
             # Send email
             email_sent = send_reset_email(user, code)
@@ -626,3 +665,9 @@ def dashboard_redirect_view(request):
         return redirect('technicians:dashboard')
     else:
         return redirect('reports:dashboard')
+
+def landing_view(request):
+    """Landing page for unauthenticated users."""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    return render(request, 'landing.html')

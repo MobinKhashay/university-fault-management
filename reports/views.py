@@ -43,9 +43,21 @@ def submit_report_view(request):
     Submit a new fault report.
     US-06: ثبت گزارش خرابی با مکان سلسله‌مراتبی، دسته‌بندی، آپلود عکس
     """
+    # Check ID card verification
+    if not request.user.is_admin_user and not request.user.is_technician:
+        if not request.user.is_id_verified:
+            messages.error(request,
+                           '⚠️ برای ثبت گزارش خرابی، ابتدا باید تصویر کارت شناسایی شما توسط مدیر تایید شود. لطفاً از بخش پروفایل تصویر کارت شناسایی خود را آپلود کنید.')
+            return redirect('accounts:profile')
     if request.method == 'POST':
         form = ReportForm(request.POST, request.FILES)
-        if form.is_valid():
+
+        # Debug: show form errors
+        if not form.is_valid():
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+        else:
             report = form.save(commit=False)
             report.reporter = request.user
             report.save()
@@ -108,13 +120,17 @@ def submit_report_view(request):
 
 @login_required
 def my_reports_view(request):
-    """
-    List of user's reports with filtering and pagination.
-    US-07: لیست گزارش‌های من با فیلتر و صفحه‌بندی
-    """
+    from django.core.paginator import Paginator
+
     reports = Report.objects.filter(reporter=request.user)
 
-    # Filters
+    # Search
+    search = request.GET.get('q', '')
+    if search:
+        reports = reports.filter(
+            Q(id__icontains=search) | Q(title__icontains=search)
+        )
+
     status_filter = request.GET.get('status', '')
     category_filter = request.GET.get('category', '')
 
@@ -125,11 +141,23 @@ def my_reports_view(request):
 
     categories = FaultCategory.objects.all()
 
+    paginator = Paginator(reports, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    query_string = ''
+    if search: query_string += f'q={search}&'
+    if status_filter: query_string += f'status={status_filter}&'
+    if category_filter: query_string += f'category={category_filter}&'
+
     context = {
-        'reports': reports,
+        'reports': page_obj,
+        'page_obj': page_obj,
         'categories': categories,
         'current_status': status_filter,
         'current_category': category_filter,
+        'query_string': query_string,
+        'search': search,
     }
     return render(request, 'reports/my_reports.html', context)
 
@@ -188,3 +216,120 @@ def ajax_check_duplicate(request):
         })
 
     return JsonResponse({'duplicates': result})
+
+
+@login_required
+def send_message_view(request, report_id):
+    """Send a message within a ticket."""
+    report = get_object_or_404(Report, id=report_id)
+
+    # Check access: only reporter or assigned technician
+    if request.user != report.reporter:
+        if hasattr(request.user, 'technician_profile') and report.technician:
+            if request.user.technician_profile != report.technician:
+                messages.error(request, 'دسترسی ندارید.')
+                return redirect('accounts:dashboard')
+        else:
+            messages.error(request, 'دسترسی ندارید.')
+            return redirect('accounts:dashboard')
+
+    if request.method == 'POST':
+        text = request.POST.get('message', '').strip()
+        attachment = request.FILES.get('attachment')
+
+        if text:
+            from .models import TicketMessage
+            TicketMessage.objects.create(
+                report=report,
+                sender=request.user,
+                message=text,
+                attachment=attachment,
+            )
+
+            # Notify the other party
+            from notifications.models import Notification
+            if request.user == report.reporter and report.technician:
+                Notification.objects.create(
+                    user=report.technician.user, report=report,
+                    type='new_message',
+                    message=f'پیام جدید از گزارش‌دهنده در تیکت #{report.id}',
+                )
+            elif report.reporter:
+                Notification.objects.create(
+                    user=report.reporter, report=report,
+                    type='new_message',
+                    message=f'پیام جدید از تکنسین در تیکت #{report.id}',
+                )
+
+            messages.success(request, 'پیام ارسال شد.')
+
+    # Redirect back to where they came from
+    if hasattr(request.user, 'technician_profile') and request.user.is_technician:
+        return redirect('technicians:task_detail', report_id=report_id)
+    else:
+        return redirect('reports:report_detail', report_id=report_id)
+
+
+@login_required
+def report_detail_view(request, report_id):
+    """Reporter views report detail with messages and rating."""
+    report = get_object_or_404(Report, id=report_id, reporter=request.user)
+    logs = report.logs.all().order_by('created_at')
+    media = report.media.filter(is_after=False)
+    after_media = report.media.filter(is_after=True)
+    ticket_messages = report.messages.all().order_by('created_at')
+
+    return render(request, 'reports/report_detail.html', {
+        'report': report, 'logs': logs, 'media': media,
+        'after_media': after_media, 'ticket_messages': ticket_messages,
+    })
+
+
+@login_required
+def rate_report_view(request, report_id):
+    """Reporter rates a resolved report."""
+    if request.method == 'POST':
+        report = get_object_or_404(Report, id=report_id, reporter=request.user)
+        rating = request.POST.get('rating')
+        try:
+            rating = int(rating)
+            if 1 <= rating <= 5:
+                report.rating = rating
+                report.status = 'closed'
+                report.save()
+
+                from .models import RepairLog
+                RepairLog.objects.create(
+                    report=report, action='rated',
+                    description=f'امتیاز {rating} ستاره توسط گزارش‌دهنده',
+                )
+                messages.success(request, f'امتیاز {rating} ستاره ثبت شد.')
+        except (ValueError, TypeError):
+            messages.error(request, 'امتیاز نامعتبر.')
+
+    return redirect('reports:report_detail', report_id=report_id)
+
+def ajax_report_preview(request):
+    """AJAX preview of a report for duplicate checking."""
+    report_id = request.GET.get('report_id')
+    if not report_id:
+        return JsonResponse({'error': 'missing id'})
+    try:
+        report = Report.objects.select_related(
+            'reporter', 'location__building__faculty', 'category', 'technician__user'
+        ).get(id=report_id)
+    except Report.DoesNotExist:
+        return JsonResponse({'error': 'not found'})
+
+    return JsonResponse({
+        'id': report.id,
+        'title': report.title,
+        'description': report.description,
+        'location': str(report.location),
+        'category': str(report.category),
+        'status': report.get_status_display(),
+        'priority': report.get_priority_display(),
+        'reporter': report.reporter.full_name,
+        'technician': report.technician.user.full_name if report.technician else 'ارجاع نشده',
+        'created_at': report.created_at.strftime('%Y/%m/%d %H:%M'),
+    })

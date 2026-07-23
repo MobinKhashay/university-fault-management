@@ -1,56 +1,145 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}تنظیمات ساختار دانشگاه{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        .structure-section { background: var(--white); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .structure-section h3 { color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid #E8F0FE; padding-bottom: 8px; }
+        .add-form { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .add-form .form-input { flex: 1; min-width: 200px; }
+        .structure-tree { padding: 0; }
+        .tree-item { background: #F8F9FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; }
+        .tree-header { display: flex; justify-content: space-between; align-items: center; }
+        .tree-header strong { font-size: 15px; color: var(--dark); }
+        .tree-children { margin-top: 10px; padding-right: 20px; }
+        .tree-child { background: white; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+        .tree-locations { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .loc-tag { background: #E8F0FE; padding: 3px 10px; border-radius: 12px; font-size: 11px; color: #1F4E79; display: inline-flex; align-items: center; gap: 4px; }
+        .loc-tag form { display: inline; }
+        .loc-tag button { background: none; border: none; color: #DC3545; cursor: pointer; font-size: 14px; padding: 0; }
+        .child-add-form { display: flex; gap: 8px; margin-top: 8px; }
+        .child-add-form .form-input { padding: 6px 10px; font-size: 12px; }
+        .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+        .delete-btn { background: none; border: none; color: #DC3545; cursor: pointer; font-size: 16px; }
+        .delete-btn:hover { color: #A71D2A; }
+    </style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header"><h1>🏛️ تنظیمات ساختار دانشگاه</h1><a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a></div>
-{% if messages %}<div class="messages">{% for m in messages %}<div class="alert alert-{{ m.tags }}">{{ m }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}</div>{% endif %}
+    <div class="page-header">
+        <h1>🏛️ تنظیمات ساختار دانشگاه</h1>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a>
+    </div>
 
-<!-- Faculties & Buildings -->
-<div class="section-card">
-    <h3>🏢 دانشکده‌ها و ساختمان‌ها</h3>
-    <form method="post" action="{% url 'admin_panel:add_faculty' %}" class="inline-add-form">{% csrf_token %}<input type="text" name="name" class="form-input" placeholder="نام دانشکده جدید..." required><button type="submit" class="btn btn-primary">+ افزودن</button></form>
-    {% for fac in faculties %}
-    <div class="structure-item">
-        <div class="structure-header">
-            <strong>{{ fac.name }}</strong>
-            <form method="post" action="{% url 'admin_panel:delete_faculty' fac.id %}" style="display:inline">{% csrf_token %}<button class="btn-sm btn-danger">حذف</button></form>
-        </div>
-        <div class="structure-children">
-            {% for bld in fac.buildings.all %}
-            <div class="structure-child">
-                <span>🏠 {{ bld.name }}</span>
-                <form method="post" action="{% url 'admin_panel:delete_building' bld.id %}" style="display:inline">{% csrf_token %}<button class="btn-sm btn-danger">حذف</button></form>
-                <div class="structure-locations">
-                    {% for loc in bld.locations.all %}
-                    <span class="location-tag">طبقه {{ loc.floor|default:"-" }} / اتاق {{ loc.room|default:"-" }}</span>
-                    {% endfor %}
+    <!-- Faculties & Buildings -->
+    <div class="structure-section">
+        <h3>🏢 دانشکده‌ها، ساختمان‌ها و مکان‌ها</h3>
+
+        <form method="post" action="{% url 'admin_panel:add_faculty' %}" class="add-form">
+            {% csrf_token %}
+            <input type="text" name="name" class="form-input" placeholder="نام دانشکده / مجموعه جدید..." required>
+            <button type="submit" class="btn btn-primary">+ افزودن دانشکده</button>
+        </form>
+
+        <div class="structure-tree">
+            {% for fac in faculties %}
+                <div class="tree-item">
+                    <div class="tree-header">
+                        <strong>🏛️ {{ fac.name }}</strong>
+                        <form method="post" action="{% url 'admin_panel:delete_faculty' fac.id %}" style="display:inline;" onsubmit="return confirm('تمام ساختمان‌ها و مکان‌های این دانشکده هم حذف می‌شوند. مطمئنید؟')">
+                            {% csrf_token %}
+                            <button class="delete-btn" title="حذف دانشکده">🗑️</button>
+                        </form>
+                    </div>
+
+                    <div class="tree-children">
+                        {% for bld in fac.buildings.all %}
+                            <div class="tree-child">
+                                <div style="flex:1;">
+                                    <strong>🏠 {{ bld.name }}</strong>
+                                    <div class="tree-locations">
+                                        {% for loc in bld.locations.all %}
+                                            <span class="loc-tag">
+                                طبقه {{ loc.floor|default:"-" }} / اتاق {{ loc.room|default:"-" }}
+                                <form method="post" action="{% url 'admin_panel:delete_location' loc.id %}">{% csrf_token %}<button title="حذف">×</button></form>
+                            </span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <!-- Add Location -->
+                                    <form method="post" action="{% url 'admin_panel:add_location' %}" class="child-add-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="building_id" value="{{ bld.id }}">
+                                        <input type="text" name="floor" class="form-input" placeholder="طبقه" style="width:70px;">
+                                        <input type="text" name="room" class="form-input" placeholder="اتاق" style="width:70px;">
+                                        <button type="submit" class="btn btn-primary btn-xs">+ مکان</button>
+                                    </form>
+                                </div>
+                                <form method="post" action="{% url 'admin_panel:delete_building' bld.id %}" onsubmit="return confirm('مطمئنید؟')">
+                                    {% csrf_token %}
+                                    <button class="delete-btn" title="حذف ساختمان">🗑️</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+
+                        <!-- Add Building -->
+                        <form method="post" action="{% url 'admin_panel:add_building' %}" class="child-add-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="faculty_id" value="{{ fac.id }}">
+                            <input type="text" name="name" class="form-input" placeholder="نام ساختمان جدید..." required>
+                            <button type="submit" class="btn btn-primary btn-xs">+ ساختمان</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
+                {% empty %}
+                <p style="text-align:center;color:#999;padding:20px;">هنوز دانشکده‌ای تعریف نشده</p>
             {% endfor %}
-            <form method="post" action="{% url 'admin_panel:add_building' %}" class="inline-add-form small">{% csrf_token %}<input type="hidden" name="faculty_id" value="{{ fac.id }}"><input type="text" name="name" class="form-input" placeholder="ساختمان جدید..." required><button type="submit" class="btn-sm btn-success">+</button></form>
         </div>
     </div>
-    {% endfor %}
-</div>
 
-<!-- Specialties & Categories -->
-<div class="section-card">
-    <h3>🔧 تخصص‌ها و دسته‌بندی خرابی‌ها</h3>
-    <form method="post" action="{% url 'admin_panel:add_specialty' %}" class="inline-add-form">{% csrf_token %}<input type="text" name="name" class="form-input" placeholder="تخصص جدید..." required><button type="submit" class="btn btn-primary">+ افزودن</button></form>
-    {% for spec in specialties %}
-    <div class="structure-item">
-        <strong>{{ spec.name }}</strong>
-        <div class="structure-children">
-            {% for cat in spec.categories.all %}
-            <div class="structure-child">
-                <span>📋 {{ cat.name }}</span>
-                <form method="post" action="{% url 'admin_panel:delete_category' cat.id %}" style="display:inline">{% csrf_token %}<button class="btn-sm btn-danger">حذف</button></form>
-            </div>
+    <!-- Specialties & Categories -->
+    <div class="structure-section">
+        <h3>🔧 تخصص‌ها و دسته‌بندی خرابی‌ها</h3>
+
+        <form method="post" action="{% url 'admin_panel:add_specialty' %}" class="add-form">
+            {% csrf_token %}
+            <input type="text" name="name" class="form-input" placeholder="نام تخصص جدید (مثال: تعمیرات آسانسور)..." required>
+            <button type="submit" class="btn btn-primary">+ افزودن تخصص</button>
+        </form>
+
+        <div class="structure-tree">
+            {% for spec in specialties %}
+                <div class="tree-item">
+                    <div class="tree-header">
+                        <strong>🔧 {{ spec.name }}</strong>
+                        <form method="post" action="{% url 'admin_panel:delete_specialty' spec.id %}" style="display:inline;" onsubmit="return confirm('تمام دسته‌بندی‌های زیرمجموعه هم حذف می‌شوند. مطمئنید؟')">
+                            {% csrf_token %}
+                            <button class="delete-btn" title="حذف تخصص">🗑️</button>
+                        </form>
+                    </div>
+                    <div class="tree-children">
+                        {% for cat in spec.categories.all %}
+                            <div class="tree-child">
+                                <span>📋 {{ cat.name }}</span>
+                                <form method="post" action="{% url 'admin_panel:delete_category' cat.id %}" onsubmit="return confirm('مطمئنید؟')">
+                                    {% csrf_token %}
+                                    <button class="delete-btn" title="حذف">🗑️</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+
+                        <!-- Add Category -->
+                        <form method="post" action="{% url 'admin_panel:add_category' %}" class="child-add-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="specialty_id" value="{{ spec.id }}">
+                            <input type="text" name="name" class="form-input" placeholder="دسته‌بندی جدید..." required>
+                            <button type="submit" class="btn btn-primary btn-xs">+ دسته‌بندی</button>
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <p style="text-align:center;color:#999;padding:20px;">هنوز تخصصی تعریف نشده</p>
             {% endfor %}
-            <form method="post" action="{% url 'admin_panel:add_category' %}" class="inline-add-form small">{% csrf_token %}<input type="hidden" name="specialty_id" value="{{ spec.id }}"><input type="text" name="name" class="form-input" placeholder="دسته‌بندی جدید..." required><button type="submit" class="btn-sm btn-success">+</button></form>
         </div>
     </div>
-    {% endfor %}
-</div>
 {% endblock %}

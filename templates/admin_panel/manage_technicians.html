@@ -2,16 +2,205 @@
 {% load static %}
 {% block title %}مدیریت تکنسین‌ها{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/admin.css' %}">{% endblock %}
+
 {% block content %}
-<div class="page-header"><h1>👷 مدیریت تکنسین‌ها</h1><div class="quick-actions"><a href="{% url 'admin_panel:register_technician' %}" class="btn btn-primary">+ ثبت تکنسین جدید</a><a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a></div></div>
-{% if messages %}<div class="messages">{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}<button class="alert-close" onclick="this.parentElement.remove()">&times;</button></div>{% endfor %}</div>{% endif %}
-<div class="section-card"><h3>تکنسین‌های فعال</h3>
-<table class="data-table"><thead><tr><th>نام</th><th>تخصص</th><th>کد پرسنلی</th><th>شیفت</th><th>وضعیت</th><th>تسک فعال</th><th>عملیات</th></tr></thead>
-<tbody>{% for tech in technicians %}<tr><td>{{ tech.user.full_name }}</td><td>{{ tech.specialty.name }}</td><td>{{ tech.personnel_code }}</td><td>{{ tech.shift_start|time:"H:i" }}-{{ tech.shift_end|time:"H:i" }}</td><td><span class="status-badge status-{{ tech.status }}">{{ tech.get_status_display }}</span></td><td>{{ tech.active_tasks_count }}</td><td><button class="btn-sm" onclick="showWorkload({{ tech.id }})">کارتابل</button> <form method="post" action="{% url 'admin_panel:toggle_technician' tech.id %}" style="display:inline">{% csrf_token %}<button class="btn-sm btn-danger">غیرفعال</button></form></td></tr>{% empty %}<tr><td colspan="7" class="empty-state">تکنسینی ثبت نشده</td></tr>{% endfor %}</tbody></table></div>
-{% if inactive_technicians %}<div class="section-card"><h3>غیرفعال‌ها</h3><table class="data-table"><thead><tr><th>نام</th><th>تخصص</th><th>عملیات</th></tr></thead><tbody>{% for tech in inactive_technicians %}<tr><td>{{ tech.user.full_name }}</td><td>{{ tech.specialty.name }}</td><td><form method="post" action="{% url 'admin_panel:toggle_technician' tech.id %}" style="display:inline">{% csrf_token %}<button class="btn-sm btn-success">فعال‌سازی</button></form></td></tr>{% endfor %}</tbody></table></div>{% endif %}
-<div class="modal-overlay" id="workload-modal" style="display:none"><div class="modal-content"><div class="modal-header"><h2>کارتابل</h2><button class="modal-close" onclick="document.getElementById('workload-modal').style.display='none'">&times;</button></div><div class="modal-body" id="workload-body"></div></div></div>
+    <div class="page-header">
+        <h1>👷 مدیریت تکنسین‌ها</h1>
+        <div class="quick-actions">
+            <a href="{% url 'admin_panel:register_technician' %}" class="btn btn-primary">+ ثبت تکنسین جدید</a>
+            <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-outline-secondary">بازگشت</a>
+        </div>
+    </div>
+
+
+
+    <!-- Active Technicians -->
+    <div class="section-card">
+        <h3>تکنسین‌های فعال</h3>
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>نام</th>
+                <th>تخصص</th>
+                <th>کد پرسنلی</th>
+                <th>شیفت</th>
+                <th>وضعیت</th>
+                <th>تسک فعال</th>
+                <th>عملیات</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for tech in technicians %}
+                <tr>
+                    <td style="display:flex;align-items:center;gap:10px;">
+                        {% if tech.user.profile_image %}
+                            <img src="{{ tech.user.profile_image.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--primary-light);">
+                        {% else %}
+                            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">{{ tech.user.first_name|first }}</div>
+                        {% endif %}
+                        {{ tech.user.full_name }}
+                    </td>
+                    <td>{{ tech.specialty.name }}</td>
+                    <td>{{ tech.personnel_code }}</td>
+                    <td>{{ tech.shift_start|time:"H:i" }} - {{ tech.shift_end|time:"H:i" }}</td>
+                    <td>
+                        <form method="post" action="{% url 'admin_panel:change_tech_status' tech.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <select name="status" class="form-input" style="width:auto;padding:4px 8px;font-size:12px;border-radius:20px;font-weight:600;
+                                    {% if tech.status == 'available' %}background:#D4EDDA;color:#155724;border-color:#28A745;
+                                    {% elif tech.status == 'busy' %}background:#FFF3CD;color:#856404;border-color:#FFC107;
+                                    {% else %}background:#E2E3E5;color:#383D41;border-color:#6C757D;{% endif %}"
+                                    onchange="this.form.submit()">
+                                <option value="available" {% if tech.status == 'available' %}selected{% endif %}>آماده به کار</option>
+                                <option value="busy" {% if tech.status == 'busy' %}selected{% endif %}>مشغول</option>
+                                <option value="off_shift" {% if tech.status == 'off_shift' %}selected{% endif %}>پایان شیفت</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>{{ tech.active_tasks_count }}</td>
+                    <td>
+                        <button class="btn-sm" onclick="showWorkload({{ tech.id }})" style="margin-bottom:4px;">کارتابل</button>
+                        <a href="{% url 'admin_panel:edit_technician' tech.id %}" class="btn-sm" style="text-decoration:none;color:var(--primary);border:1px solid var(--primary);margin-bottom:4px;">✏️ ویرایش</a>
+                        <form method="post" action="{% url 'admin_panel:toggle_technician' tech.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button class="btn-sm btn-danger">غیرفعال</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-state">تکنسینی ثبت نشده</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Inactive Technicians -->
+    {% if inactive_technicians %}
+        <div class="section-card">
+            <h3>تکنسین‌های غیرفعال</h3>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>نام</th>
+                    <th>تخصص</th>
+                    <th>کد پرسنلی</th>
+                    <th>عملیات</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for tech in inactive_technicians %}
+                    <tr>
+                        <td style="display:flex;align-items:center;gap:10px;">
+                            {% if tech.user.profile_image %}
+                                <img src="{{ tech.user.profile_image.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--primary-light);">
+                            {% else %}
+                                <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">{{ tech.user.first_name|first }}</div>
+                            {% endif %}
+                            {{ tech.user.full_name }}
+                        </td>
+                        <td>{{ tech.specialty.name }}</td>
+                        <td>{{ tech.personnel_code }}</td>
+                        <td>
+                            <a href="{% url 'admin_panel:edit_technician' tech.id %}" class="btn-sm" style="text-decoration:none;color:var(--primary);border:1px solid var(--primary);">✏️ ویرایش</a>
+                            <form method="post" action="{% url 'admin_panel:toggle_technician' tech.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button class="btn-sm btn-success">فعال‌سازی</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <!-- Workload Modal -->
+    <div class="modal-overlay" id="workload-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>کارتابل تکنسین</h2>
+                <button class="modal-close" onclick="document.getElementById('workload-modal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body" id="workload-body">در حال بارگذاری...</div>
+        </div>
+    </div>
 {% endblock %}
-{% block extra_js %}<script>
-function showWorkload(id){var m=document.getElementById('workload-modal'),b=document.getElementById('workload-body');b.innerHTML='بارگذاری...';m.style.display='flex';fetch('/panel/technicians/'+id+'/workload/').then(r=>r.json()).then(d=>{var h='<p><strong>'+d.name+'</strong> — '+d.specialty+'</p><p>انجام‌شده: '+d.total_completed+' | امتیاز: '+d.avg_rating+'⭐</p><hr>';if(d.tasks.length>0){h+='<table class="data-table"><thead><tr><th>#</th><th>عنوان</th><th>وضعیت</th></tr></thead><tbody>';d.tasks.forEach(t=>{h+='<tr><td>#'+t.id+'</td><td>'+t.title+'</td><td>'+t.status+'</td></tr>'});h+='</tbody></table>'}else h+='<p style="text-align:center;color:#999">تسک فعالی ندارد</p>';b.innerHTML=h})}
-document.getElementById('workload-modal').addEventListener('click',function(e){if(e.target===this)this.style.display='none'});
-</script>{% endblock %}
+
+{% block extra_js %}
+    <script>
+        function showWorkload(id) {
+            var modal = document.getElementById('workload-modal');
+            var body = document.getElementById('workload-body');
+            body.innerHTML = '<p style="text-align:center;padding:40px;color:#999;">⏳ در حال بارگذاری...</p>';
+            modal.style.display = 'flex';
+
+            fetch('/panel/technicians/' + id + '/workload/')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var html = '';
+                    // Header
+                    html += '<div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #E8F0FE;margin-bottom:16px;">';
+                    html += '<div style="font-size:42px;margin-bottom:8px;">👷</div>';
+                    html += '<h3 style="color:#1F4E79;margin:0 0 6px 0;">' + d.name + '</h3>';
+                    html += '<span style="background:#E8F0FE;padding:4px 14px;border-radius:20px;font-size:13px;color:#1F4E79;">' + d.specialty + '</span>';
+                    html += '</div>';
+
+                    // Stats
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:4px;">تکمیل‌شده</div><div style="font-size:20px;font-weight:700;color:#28A745;">' + d.total_completed + '</div></div>';
+                    html += '<div style="background:#F8F9FA;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:11px;color:#999;margin-bottom:4px;">میانگین امتیاز</div><div style="font-size:20px;font-weight:700;color:#FFD700;">' + d.avg_rating + ' ⭐</div></div>';
+                    html += '</div>';
+
+                    // Active Tasks
+                    html += '<h4 style="color:#1F4E79;margin-bottom:12px;border-bottom:2px solid #E8F0FE;padding-bottom:8px;">📌 تسک‌های فعال (' + d.active_tasks.length + ')</h4>';
+                    if (d.active_tasks.length > 0) {
+                        d.active_tasks.forEach(function(t) {
+                            var sc = '#17A2B8';
+                            if (t.status.indexOf('انجام') > -1) sc = '#2E75B6';
+                            if (t.status.indexOf('معلق') > -1) sc = '#E65100';
+                            if (t.status.indexOf('ارجاع') > -1) sc = '#FF9800';
+                            html += '<div style="background:#F8F9FA;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border-right:3px solid ' + sc + ';">';
+                            html += '<div><div style="font-size:14px;font-weight:600;color:#333;">#' + t.id + ' — ' + t.title + '</div>';
+                            html += '<div style="display:flex;gap:12px;margin-top:4px;"><span style="font-size:12px;color:#999;">' + t.created_at + '</span>';
+                            html += '<span style="background:' + sc + ';color:white;padding:2px 10px;border-radius:12px;font-size:11px;">' + t.status + '</span>';
+                            html += '<span style="font-size:12px;color:#666;">' + t.priority + '</span></div></div>';
+                            html += '<a href="/panel/reports/" style="background:var(--primary);color:white;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;">مشاهده</a>';
+                            html += '</div>';
+                        });
+                    } else {
+                        html += '<div style="text-align:center;padding:20px;color:#999;">✅ تسک فعالی ندارد</div>';
+                    }
+
+                    // Completed Tasks
+                    html += '<h4 style="color:#28A745;margin:20px 0 12px;border-bottom:2px solid #D4EDDA;padding-bottom:8px;">✅ تسک‌های تکمیل‌شده (۱۰ مورد اخیر)</h4>';
+                    if (d.completed_tasks.length > 0) {
+                        d.completed_tasks.forEach(function(t) {
+                            var stars = '';
+                            if (t.rating) {
+                                for (var i = 1; i <= 5; i++) stars += (i <= t.rating) ? '★' : '☆';
+                            } else {
+                                stars = 'بدون امتیاز';
+                            }
+                            html += '<div style="background:#F8FFF8;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border-right:3px solid #28A745;">';
+                            html += '<div><div style="font-size:14px;font-weight:600;color:#333;">#' + t.id + ' — ' + t.title + '</div>';
+                            html += '<div style="display:flex;gap:12px;margin-top:4px;"><span style="font-size:12px;color:#999;">' + (t.closed_at || t.created_at) + '</span>';
+                            html += '<span style="font-size:12px;color:#FFD700;">' + stars + '</span>';
+                            html += '<span style="font-size:12px;color:#666;">' + t.priority + '</span></div></div>';
+                            html += '<a href="/panel/reports/" style="background:#28A745;color:white;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;">مشاهده</a>';
+                            html += '</div>';
+                        });
+                    } else {
+                        html += '<div style="text-align:center;padding:20px;color:#999;">هنوز تسکی تکمیل نشده</div>';
+                    }
+
+                    body.innerHTML = html;
+                });
+        }
+
+        document.getElementById('workload-modal').addEventListener('click', function(e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+    </script>
+{% endblock %}
